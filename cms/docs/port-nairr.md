@@ -1,4 +1,4 @@
-# NAIRR Pilot migration (cms_migration)
+# NAIRR Pilot port (`cms_port`)
 
 Prerequisite: CMS running (`make start` from `cms/`).
 
@@ -21,6 +21,6 @@ docker exec core_cms python manage.py scrape_pages --site nairr about/overview -
 docker exec core_cms python manage.py create_pages --site nairr --page about/overview --replace
 ```
 
-Site-specific code: `cms/src/apps/cms_migration/sites/nairr/`. Shared helpers: `cms/src/apps/cms_migration/common/`.
+Site-specific code: `cms/src/apps/cms_port/sites/nairr/`. Shared helpers: `cms/src/apps/cms_port/common/`.
 
 Production scrape path and branding: [Core-Portal-Deployments `nairr/camino`](https://github.com/TACC/Core-Portal-Deployments).

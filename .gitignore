@@ -50,7 +50,7 @@ dist/
 # vscode
 .vscode/
 
-# scraped HTML (migration pipeline)
+# scraped HTML (port pipeline)
 cms/scraped/
 
 # vim stuff

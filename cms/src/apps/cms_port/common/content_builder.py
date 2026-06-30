@@ -1,4 +1,4 @@
-"""django CMS plugin helpers shared across migration sites."""
+"""django CMS plugin helpers shared across port sites."""
 
 from __future__ import annotations
 

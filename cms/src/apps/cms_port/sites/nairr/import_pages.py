@@ -8,10 +8,10 @@ from django.conf import settings
 
 from bs4 import BeautifulSoup
 
-from apps.cms_migration.common.content_builder import ContentBuilder
-from apps.cms_migration.sites.nairr import scrape_lib
-from apps.cms_migration.sites.nairr.page_registry import PAGE_SPECS, PageSpec
-from apps.cms_migration.sites.nairr.plugin_builders import (
+from apps.cms_port.common.content_builder import ContentBuilder
+from apps.cms_port.sites.nairr import scrape_lib
+from apps.cms_port.sites.nairr.page_registry import PAGE_SPECS, PageSpec
+from apps.cms_port.sites.nairr.plugin_builders import (
     build_article,
     build_faq,
     build_getting_started,

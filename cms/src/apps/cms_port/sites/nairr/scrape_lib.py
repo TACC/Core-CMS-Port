@@ -1,4 +1,4 @@
-"""Fetch and extract HTML from nairrpilot.org for NAIRR migration."""
+"""Fetch and extract HTML from nairrpilot.org for NAIRR port."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup, Comment
 
-from apps.cms_migration.common.html_text import collapse_whitespace, polish_html_fragment
-from apps.cms_migration.sites.nairr.page_registry import PLACEHOLDER_SENTINEL
+from apps.cms_port.common.html_text import collapse_whitespace, polish_html_fragment
+from apps.cms_port.sites.nairr.page_registry import PLACEHOLDER_SENTINEL
 
 STRIP_SELECTORS = (
     '#resource_catalog_app',
@@ -172,7 +172,7 @@ def scrape_one(
     session = requests.Session()
     session.headers.update(
         {
-            'User-Agent': 'TACC-NAIRR-CMS-Migration/1.0 (+local dev; respects robots crawl-delay)',
+            'User-Agent': 'TACC-NAIRR-CMS-Port/1.0 (+local dev; respects robots crawl-delay)',
         }
     )
     html = fetch_html(scrape_path, base=base, session=session)

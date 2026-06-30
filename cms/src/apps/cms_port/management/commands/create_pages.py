@@ -1,7 +1,7 @@
 """
 Scrape third-party sites into HTML files and import into django CMS pages.
 
-Site-specific logic lives under ``apps.cms_migration.sites.<site>``.
+Site-specific logic lives under ``apps.cms_port.sites.<site>``.
 """
 
 from __future__ import annotations
@@ -15,17 +15,17 @@ from django.core.management.base import BaseCommand, CommandError
 from cms.api import create_page, publish_page
 from cms.models import Page
 
-from apps.cms_migration.site_loader import load_site
+from apps.cms_port.site_loader import load_site
 
 
 class Command(BaseCommand):
-    help = 'Create CMS pages from scraped HTML (see CMS_MIGRATION_SITE / --site).'
+    help = 'Create CMS pages from scraped HTML (see CMS_PORT_SITE / --site).'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--site',
             default=None,
-            help='Migration site package (default: CMS_MIGRATION_SITE or nairr)',
+            help='Port site package (default: CMS_PORT_SITE or nairr)',
         )
         parser.add_argument(
             '--page',

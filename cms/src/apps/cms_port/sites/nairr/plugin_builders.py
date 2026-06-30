@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from bs4 import BeautifulSoup
 
-from apps.cms_migration.common.content_builder import (
+from apps.cms_port.common.content_builder import (
     ContentBuilder,
     GRID_CONTAINER_TYPE_SECTION,
     MUTED_SECTION,
     STYLE_CLASS_NAME_SECTION,
 )
-from apps.cms_migration.common.html_text import (
+from apps.cms_port.common.html_text import (
     collapse_whitespace,
     prepare_article_html_chunk,
     split_html_for_cms_text_plugins,

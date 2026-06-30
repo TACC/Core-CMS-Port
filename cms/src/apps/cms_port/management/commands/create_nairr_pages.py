@@ -1,6 +1,6 @@
 """NAIRR Pilot: alias for ``create_pages`` (default site nairr)."""
 
-from apps.cms_migration.management.commands.create_pages import Command as CreatePagesCommand
+from apps.cms_port.management.commands.create_pages import Command as CreatePagesCommand
 
 
 class Command(CreatePagesCommand):

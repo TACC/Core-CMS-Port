@@ -1,5 +1,5 @@
 """
-Fetch remote HTML and write scrape files for a migration site package.
+Fetch remote HTML and write scrape files for a port site package.
 
 Requires beautifulsoup4 and requests in the CMS image.
 """
@@ -7,7 +7,7 @@ Requires beautifulsoup4 and requests in the CMS image.
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.cms_migration.site_loader import load_site
+from apps.cms_port.site_loader import load_site
 
 
 class Command(BaseCommand):
@@ -17,7 +17,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--site',
             default=None,
-            help='Migration site package (default: CMS_MIGRATION_SITE or nairr)',
+            help='Port site package (default: CMS_PORT_SITE or nairr)',
         )
         parser.add_argument(
             'page',

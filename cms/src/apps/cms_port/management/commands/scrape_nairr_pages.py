@@ -1,6 +1,6 @@
 """NAIRR Pilot: alias for ``scrape_pages`` (default site nairr)."""
 
-from apps.cms_migration.management.commands.scrape_pages import Command as ScrapePagesCommand
+from apps.cms_port.management.commands.scrape_pages import Command as ScrapePagesCommand
 
 
 class Command(ScrapePagesCommand):

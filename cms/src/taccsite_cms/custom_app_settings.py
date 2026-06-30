@@ -1,3 +1,3 @@
-CUSTOM_APPS = ['apps.cms_migration']
+CUSTOM_APPS = ['apps.cms_port']
 CUSTOM_MIDDLEWARE = []
 STATICFILES_DIRS = ()

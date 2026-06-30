@@ -11,14 +11,14 @@ SILENCED_SYSTEM_CHECKS = ['captcha.recaptcha_test_key_error']
 SESSION_COOKIE_SECURE = False
 
 ########################
-# CMS migration (NAIRR Pilot)
+# CMS port (NAIRR Pilot)
 ########################
 
 import os
 
 from taccsite_cms.settings.settings import BASE_DIR
 
-CMS_MIGRATION_SITE = 'nairr'
+CMS_PORT_SITE = 'nairr'
 
 NAIRR_SCRAPE_ROOT = os.path.join(BASE_DIR, 'scraped', 'nairr')
 NAIRR_SCRAPE_BASE_URL = 'https://nairrpilot.org'
