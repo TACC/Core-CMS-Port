@@ -14,6 +14,8 @@ Ports a third-party website to Core-CMS.
 
 Follow [Core CMS Template's "Start Project"][core-cms-template-start].
 
+NAIRR Joomla migration (scrape/import): see [cms/docs/migration-nairr.md](cms/docs/migration-nairr.md).
+
 ## Documentation
 
 > [!TIP]

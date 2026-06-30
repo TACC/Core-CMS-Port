@@ -50,5 +50,8 @@ dist/
 # vscode
 .vscode/
 
+# scraped HTML (migration pipeline)
+cms/scraped/
+
 # vim stuff
 *.swp
