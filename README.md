@@ -1,25 +1,13 @@
-## TACC Custom CMS
+## NAIRR CMS
 
-https://cep.tacc.utexas.edu/
+https://nairr.tacc.utexas.edu/
 
 > [!IMPORTANT]
 > After creating a repository from [Core CMS Template]:
 >
-> 1. In this doc:
->    1. Rename "TACC Custom CMS" to the name of this project.
->    2. Change https://cep.tacc.utexas.edu/ to URL of this project's website.
-> 2. In these files —
->
->    - `.github/workflows/build.yml`
->    - `cms/Makefile`
->
->    — replace `custom-cms` with the name of this project's CMS image.
-> 3. Delete `/docs` directory (so it does not become outdated).
 > 4. [Start the project.][core-cms-template-start]
 > 5. [Configure the project.][core-cms-template-configure]
 > 6. Adapt or Remove "[Quick Start](#quick-start)" according to your project.
-> 7. [Classify repository with topics][gh-repo-topics]: **`tacc-core-cms-template`**, `django-cms`, `tacc`.
-> 8. (Optional) Run "Sync Labels" Action for accessible, developer Labels.
 > 9. **Delete this notice.**
 
 ## Quick Start
