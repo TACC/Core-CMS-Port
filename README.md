@@ -1,6 +1,6 @@
-## NAIRR CMS
+## Core-CMS-Port
 
-https://nairr.tacc.utexas.edu/
+Ports a third-party website to Core-CMS.
 
 > [!IMPORTANT]
 > After creating a repository from [Core CMS Template]:
