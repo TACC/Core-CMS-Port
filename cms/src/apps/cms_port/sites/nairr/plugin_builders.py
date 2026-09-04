@@ -120,6 +120,21 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
         builder.add_text(section, prepare_article_html_chunk(chunk))
 
 
+def _h2_title(chunk: str) -> str:
+    soup_bit = BeautifulSoup(chunk, 'lxml')
+    h2 = soup_bit.find('h2')
+    return collapse_whitespace(h2.get_text()) if h2 else ''
+
+
+# Section-content overrides, keyed by (page_slug, <h2> heading text).
+# Audit/extend edge cases here instead of branching inside
+# add_article_text_plugins - anything not listed falls through to the
+# generic h1-container / h2-Style-section handling below.
+SECTION_OVERRIDES = {
+    ('about/overview', 'NAIRR Pilot Operations Teams'): _emit_overview_operations_teams,
+}
+
+
 def add_article_text_plugins(
     builder: ContentBuilder,
     parent,
@@ -135,13 +150,6 @@ def add_article_text_plugins(
         if not chunk:
             continue
         lead = _chunk_leading_tag(chunk)
-        if page_slug == 'about/overview' and lead == 'h2':
-            soup_bit = BeautifulSoup(chunk, 'lxml')
-            h2 = soup_bit.find('h2')
-            title = collapse_whitespace(h2.get_text()) if h2 else ''
-            if title == 'NAIRR Pilot Operations Teams':
-                _emit_overview_operations_teams(builder, parent, chunk)
-                continue
         if lead == 'h1':
             container = builder.add_container(
                 parent,
@@ -150,6 +158,10 @@ def add_article_text_plugins(
             )
             builder.add_text(container, chunk)
         elif lead == 'h2':
+            override = SECTION_OVERRIDES.get((page_slug, _h2_title(chunk)))
+            if override:
+                override(builder, parent, chunk)
+                continue
             section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
             builder.add_text(section, chunk)
         else:
