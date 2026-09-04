@@ -104,9 +104,9 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
         ]
         if column_divs:
             row = builder.add_row(section)
-            md_col = 12 // len(column_divs)
+            lg_col = 12 // len(column_divs)
             for column_div in column_divs:
-                col = builder.add_column(row, xs_col=12, md_col=md_col)
+                col = builder.add_column(row, xs_col=12, lg_col=lg_col)
                 for team in column_div.select('div.team'):
                     inner = prepare_article_html_chunk(team.decode_contents().strip())
                     if inner:
