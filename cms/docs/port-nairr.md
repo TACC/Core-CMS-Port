@@ -21,6 +21,8 @@ docker exec core_cms python manage.py scrape_pages --site nairr about/overview -
 docker exec core_cms python manage.py create_pages --site nairr --page about/overview --replace
 ```
 
-Site-specific code: `cms/src/apps/cms_port/sites/nairr/`. Shared helpers: `cms/src/apps/cms_port/common/`.
+Site-specific code, including the `*_nairr_*` management commands: `cms/src/apps/cms_port/sites/nairr/`. Shared helpers: `cms/src/apps/cms_port/common/`.
+
+A site package with its own management commands must be a registered Django app (see `sites/nairr/apps.py`) added to `CUSTOM_APPS` in `custom_app_settings.py` - here, `apps.cms_port.sites.nairr`.
 
 Production scrape path and branding: [Core-Portal-Deployments `nairr/camino`](https://github.com/TACC/Core-Portal-Deployments).
