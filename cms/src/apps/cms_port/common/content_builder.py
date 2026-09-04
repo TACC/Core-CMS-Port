@@ -63,7 +63,7 @@ class ContentBuilder:
             horizontal_alignment='',
         )
 
-    def add_column(self, parent, xs_col=12):
+    def add_column(self, parent, xs_col=12, sm_col=None, md_col=None, lg_col=None, xl_col=None):
         return add_plugin(
             self.placeholder,
             Bootstrap4GridColumnPlugin,
@@ -72,6 +72,10 @@ class ContentBuilder:
             column_type='col',
             column_alignment='',
             xs_col=xs_col,
+            sm_col=sm_col,
+            md_col=md_col,
+            lg_col=lg_col,
+            xl_col=xl_col,
         )
 
     def add_card_standard_text(self, parent, html: str):
