@@ -149,15 +149,15 @@ def add_article_text_plugins(
         chunk = prepare_article_html_chunk(chunk)
         if not chunk:
             continue
-        lead = _chunk_leading_tag(chunk)
-        if lead == 'h1':
+        leading_tag = _chunk_leading_tag(chunk)
+        if leading_tag == 'h1':
             container = builder.add_container(
                 parent,
                 container_type=GRID_CONTAINER_TYPE_SECTION,
                 tag_type='section',
             )
             builder.add_text(container, chunk)
-        elif lead == 'h2':
+        elif leading_tag == 'h2':
             override = SECTION_OVERRIDES.get((page_slug, _h2_title(chunk)))
             if override:
                 override(builder, parent, chunk)
