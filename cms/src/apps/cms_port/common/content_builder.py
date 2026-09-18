@@ -9,6 +9,8 @@ from djangocms_bootstrap4.contrib.bootstrap4_grid.cms_plugins import (
     Bootstrap4GridContainerPlugin,
     Bootstrap4GridRowPlugin,
 )
+from djangocms_snippet.cms_plugins import SnippetPlugin
+from djangocms_snippet.models import Snippet
 from djangocms_style.cms_plugins import StylePlugin
 from djangocms_text_ckeditor.cms_plugins import TextPlugin
 
@@ -92,3 +94,47 @@ class ContentBuilder:
         card = self.add_style(parent, 'card--image-top', tag_type='article')
         self.add_text(card, html)
         return card
+
+    def add_button_link(self, parent, *, name: str, url: str, link_target: str = '', link_context: str = 'primary'):
+        """Bootstrap4 Link/Button plugin (link_type='btn') pointed at an external URL.
+
+        Passed by registered name, not class: taccsite_cms extends/re-registers
+        this plugin under the same name with a different class object, so an
+        imported class reference wouldn't match `plugin_pool`'s registration.
+
+        link_context is required for a real ``.btn`` class to render at all -
+        Bootstrap4LinkPlugin.render() only adds it inside `if instance.link_context`.
+        """
+        plugin = add_plugin(
+            self.placeholder,
+            'Bootstrap4LinkPlugin',
+            self.language,
+            target=parent,
+            name=name,
+            external_link=url,
+            link_type='btn',
+            link_context=link_context,
+        )
+        # `target` (the HTML link target, e.g. "_blank") collides with add_plugin's
+        # own `target` kwarg (tree parent), so set it after creation instead.
+        if link_target:
+            plugin.target = link_target
+            plugin.save()
+        return plugin
+
+    def add_snippet_script(self, parent, *, slug: str, name: str, static_path: str):
+        """Add a <script src> tag via djangocms_snippet, keyed by slug so re-imports reuse it."""
+        snippet, _ = Snippet.objects.get_or_create(
+            slug=slug,
+            defaults={
+                'name': name,
+                'html': "{%% load static %%}<script src=\"{%% static '%s' %%}\"></script>" % static_path,
+            },
+        )
+        return add_plugin(
+            self.placeholder,
+            SnippetPlugin,
+            self.language,
+            target=parent,
+            snippet=snippet,
+        )

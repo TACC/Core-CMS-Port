@@ -37,6 +37,20 @@ def dedupe_banner_html(banners: list[str]) -> str | None:
     return banners[0]
 
 
+def dedupe_banners(banners: list[str]) -> list[str]:
+    """Keep every banner, but drop exact-text repeats."""
+    seen = set()
+    unique = []
+    for body in banners:
+        key = BeautifulSoup(body, 'lxml').get_text(' ', strip=True)
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        unique.append(body)
+    return unique
+
+
 def _h1_markup(h1) -> str | None:
     text = collapse_whitespace(h1.get_text())
     if not text:
@@ -188,28 +202,84 @@ def build_sidebar_article(
     banner_html = dedupe_banner_html(banners)
 
     row = builder.add_row(parent)
-    main_col = builder.add_column(row, xs_col=8)
+    # xs_col=12 stacks main/side full-width on narrow screens; lg_col splits
+    # them side by side from the lg breakpoint up (see 9db8570d).
+    main_col = builder.add_column(row, xs_col=12, lg_col=8)
     if body_html:
         add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
     if banner_html:
-        side_col = builder.add_column(row, xs_col=4)
+        side_col = builder.add_column(row, xs_col=12, lg_col=4)
         builder.add_card_standard_text(side_col, banner_html)
+
+
+def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
+    """Pull the ``div.controls > a`` call-to-action out of a banner, for a real Button plugin."""
+    soup = BeautifulSoup(f'<div data-nairr-banner>{banner_html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-banner]')
+    link = root.select_one('div.controls a') if root else None
+    cta = None
+    if link:
+        cta = {
+            'name': collapse_whitespace(link.get_text()),
+            'url': link.get('href', ''),
+            'target': link.get('target', ''),
+        }
+        controls = link.find_parent('div', class_='controls') or link
+        controls.decompose()
+    body_html = root.decode_contents().strip() if root else banner_html
+    return body_html, cta
+
+
+def _extract_accordion_controls(soup: BeautifulSoup) -> tuple[str | None, str | None]:
+    """Pull 'Expand All' / 'Collapse All' link text from the FAQ page, if present."""
+    controls = soup.select_one('.all-hz-accordions-controls')
+    if not controls:
+        return None, None
+    expand = controls.select_one('a.expand')
+    collapse = controls.select_one('a.collapse')
+    expand_text = collapse_whitespace(expand.get_text()) if expand else None
+    collapse_text = collapse_whitespace(collapse.get_text()) if collapse else None
+    controls.decompose()
+    return expand_text, collapse_text
 
 
 def build_faq(builder: ContentBuilder, parent, html: str) -> None:
     soup = BeautifulSoup(html, 'lxml')
     _emit_leading_h1(builder, parent, soup)
+
+    # Scope wrapper: JS (faq-accordion.js) targets `.nairr-faq` so Expand/Collapse
+    # All only affects this page's accordions.
+    wrapper = builder.add_style(parent, 'nairr-faq', tag_type='div')
+
     banners = []
     for node in soup.select('div.announcement-banner'):
         banners.append(node.decode_contents().strip())
         node.decompose()
-    banner_html = dedupe_banner_html(banners)
 
-    if banner_html:
-        top_row = builder.add_row(parent)
-        builder.add_column(top_row, xs_col=8)
-        side = builder.add_column(top_row, xs_col=4)
-        builder.add_card_standard_text(side, banner_html)
+    for banner_html in dedupe_banners(banners):
+        body_html, cta = _extract_banner_cta(banner_html)
+        banner_row = builder.add_row(wrapper)
+        banner_col = builder.add_column(banner_row, xs_col=12)
+        card = builder.add_card_standard_text(banner_col, body_html)
+        if cta and cta['url']:
+            builder.add_button_link(card, name=cta['name'], url=cta['url'], link_target=cta['target'])
+
+    expand_text, collapse_text = _extract_accordion_controls(soup)
+    if expand_text or collapse_text:
+        links = []
+        if expand_text:
+            links.append(f'<a href="#" class="nairr-faq-expand-all">{expand_text}</a>')
+        if collapse_text:
+            links.append(f'<a href="#" class="nairr-faq-collapse-all">{collapse_text}</a>')
+        builder.add_text(wrapper, f'<div class="nairr-faq-controls">{" ".join(links)}</div>')
+        builder.add_snippet_script(
+            wrapper,
+            slug='nairr-faq-accordion-js',
+            name='NAIRR FAQ Accordion Controls',
+            static_path='nairr/js/faq-accordion.js',
+        )
+
+    builder.add_text(wrapper, '<hr>')
 
     for heading in soup.find_all('h2'):
         category_title = heading.get_text(' ', strip=True)
@@ -221,13 +291,22 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         details_blocks = []
         for trigger in accordion.select('button.accordion-trigger'):
             question = trigger.get_text(' ', strip=True)
-            panel = trigger.find_next_sibling('div', class_='accordion-panel')
+            panel_id = trigger.get('aria-controls')
+            panel = accordion.find('div', id=panel_id) if panel_id else None
             answer_html = panel.decode_contents().strip() if panel else ''
-            details_blocks.append(
-                f'<details><summary>{question}</summary>{answer_html}</details>'
+            id_attr = f' id="{panel_id}"' if panel_id else ''
+            copy_link = (
+                f'<button type="button" class="nairr-faq-copy-url" '
+                f'data-anchor="{panel_id}">Copy the URL</button>'
+                if panel_id else ''
             )
-        row = builder.add_row(parent)
-        head_col = builder.add_column(row, xs_col=4)
+            details_blocks.append(
+                f'<details{id_attr}><summary>{question}</summary>{answer_html}{copy_link}</details>'
+            )
+        row = builder.add_row(wrapper)
+        # xs_col=12 stacks heading above questions on narrow screens; lg_col
+        # splits them side by side from the lg breakpoint up (see 9db8570d).
+        head_col = builder.add_column(row, xs_col=12, lg_col=4)
         class_names = heading.get('class') or []
         if class_names:
             class_attr = ' '.join(class_names)
@@ -235,7 +314,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         else:
             h2_html = f'<h2 class="as-h3">{category_title}</h2>'
         builder.add_text(head_col, h2_html)
-        body_col = builder.add_column(row, xs_col=8)
+        body_col = builder.add_column(row, xs_col=12, lg_col=8)
         builder.add_text(body_col, '\n'.join(details_blocks))
 
 
