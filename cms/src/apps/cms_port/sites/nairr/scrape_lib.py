@@ -13,6 +13,23 @@ from bs4 import BeautifulSoup, Comment
 from apps.cms_port.common.html_text import collapse_whitespace, polish_html_fragment
 from apps.cms_port.sites.nairr.page_registry import PLACEHOLDER_SENTINEL
 
+
+def rewrite_lead_to_annotation(html: str) -> str:
+    """Replace Bootstrap ``.lead`` with ``.annotation`` (NAIRR annotation apparatus)."""
+    html = html.strip()
+    if not html or 'lead' not in html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-rewrite>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-rewrite]')
+    if not root:
+        return html
+    for el in root.select('.lead'):
+        classes = [c for c in (el.get('class') or []) if c != 'lead']
+        if 'annotation' not in classes and 'u-annotation' not in classes:
+            classes.append('annotation')
+        el['class'] = classes
+    return root.decode_contents().strip()
+
 STRIP_SELECTORS = (
     '#resource_catalog_app',
     '#app',
@@ -103,7 +120,7 @@ def extract_article_html(document_html: str) -> str:
         main = soup.select_one('main.page, main')
         inner = main.decode_contents().strip() if main else ''
     inner = _prepend_h1_to_inner(inner, h1_fragment)
-    inner = polish_html_fragment(inner)
+    inner = rewrite_lead_to_annotation(polish_html_fragment(inner))
     return _finalize_extracted(inner)
 
 
@@ -123,7 +140,7 @@ def extract_home_html(document_html: str) -> str:
     if inner:
         parts.append(inner)
     combined = '\n'.join(parts)
-    combined = polish_html_fragment(combined)
+    combined = rewrite_lead_to_annotation(polish_html_fragment(combined))
     return _finalize_extracted(combined)
 
 

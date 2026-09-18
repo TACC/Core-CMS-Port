@@ -1,0 +1,12 @@
+/* Annotation apparatus: headnote + marked referents (NAIRR misused Bootstrap .lead).
+   Bare `.annotation` for CMS editors; `.u-annotation` for BEM utility namespace. */
+.annotation,
+.u-annotation {
+  font-weight: 800;
+  color: var(--global-color-accent--secondary);
+}
+
+.annotation > span,
+.u-annotation > span {
+  color: var(--global-color-accent--secondary);
+}
