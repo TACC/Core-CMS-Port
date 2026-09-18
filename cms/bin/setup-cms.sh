@@ -17,7 +17,7 @@ PROJECT_ROOT="${SCRIPT_DIR}/.."
 SRC_ROOT="${SCRIPT_DIR}/../src"
 
 # Configure fallback for settings
-VERSION="main"
+VERSION="v4.41.0-rc1"
 BASE_URL="https://cdn.jsdelivr.net/gh/TACC/Core-CMS@${VERSION}"
 
 # Functions
