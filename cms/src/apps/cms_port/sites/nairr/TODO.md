@@ -6,7 +6,7 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 
 ## Pages
 
-- [x] `about/overview` ([PR #2](https://github.com/wesleyboar/Core-CMS-Port/pull/2))
+- [x] `about/overview` ([PR #2](https://github.com/wesleyboar/Core-CMS-Port/pull/2); still needs Core-Styles lead stylesheet, see below)
 - [ ] `help/faq` (in progress — [PR: feat: FAQ – Part 1]; banners, buttons,
       Expand/Collapse, Copy the URL done; styling follow-ups below)
 - [ ] `` (home)
@@ -43,3 +43,5 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 - [ ] Style the "Copy the URL" button (`button.nairr-faq-copy-url`).
 - [ ] Review recurring page structure/patterns across pages once more are
       imported, to spot shared edge cases before writing more `SECTION_OVERRIDES`.
+- [ ] Use the new Core-Styles lead/heading stylesheet (needs a Core-CMS bump).
+      First needed on `about/overview`. https://github.com/TACC/Core-Styles/pull/683
