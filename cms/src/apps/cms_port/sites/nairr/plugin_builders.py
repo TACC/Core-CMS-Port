@@ -15,6 +15,12 @@ from apps.cms_port.common.html_text import (
     prepare_article_html_chunk,
     split_html_for_cms_text_plugins,
 )
+from apps.cms_port.sites.nairr.scrape_lib import rewrite_lead_to_annotation
+
+
+def _prepare_html(html: str) -> str:
+    return rewrite_lead_to_annotation(prepare_article_html_chunk(html))
+
 
 def extract_announcement_banners(html: str) -> list[str]:
     soup = BeautifulSoup(html, 'lxml')
@@ -76,7 +82,7 @@ def _emit_leading_h1(builder: ContentBuilder, parent, soup: BeautifulSoup) -> No
         container_type=GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
     )
-    builder.add_text(container, prepare_article_html_chunk(markup))
+    builder.add_text(container, _prepare_html(markup))
     h1.decompose()
 
 
@@ -93,7 +99,7 @@ def _chunk_leading_tag(chunk: str) -> str | None:
 
 
 def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str) -> None:
-    """Overview: h2 + lead in a section; teams in a two-column row like Joomla ``div.teams``."""
+    """Overview: h2 + intro in a section; teams in a two-column row like Joomla ``div.teams``."""
     soup = BeautifulSoup(f'<div data-nairr-teams>{chunk}</div>', 'lxml')
     root = soup.select_one('div[data-nairr-teams]')
     if not root:
@@ -108,7 +114,7 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
             ):
                 break
             before_parts.append(str(child))
-        intro = prepare_article_html_chunk(''.join(before_parts))
+        intro = _prepare_html(''.join(before_parts))
         if intro:
             builder.add_text(section, intro)
         column_divs = [
@@ -122,16 +128,16 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
             for column_div in column_divs:
                 col = builder.add_column(row, xs_col=12, lg_col=lg_col)
                 for team in column_div.select('div.team'):
-                    inner = prepare_article_html_chunk(team.decode_contents().strip())
+                    inner = _prepare_html(team.decode_contents().strip())
                     if inner:
                         builder.add_card_plain_text(col, inner)
         else:
             for team in teams.select('div.team'):
-                inner = prepare_article_html_chunk(team.decode_contents().strip())
+                inner = _prepare_html(team.decode_contents().strip())
                 if inner:
                     builder.add_card_plain_text(section, inner)
     else:
-        builder.add_text(section, prepare_article_html_chunk(chunk))
+        builder.add_text(section, _prepare_html(chunk))
 
 
 def _h2_title(chunk: str) -> str:
@@ -160,7 +166,7 @@ def add_article_text_plugins(
     if not html or not html.strip():
         return
     for chunk in split_html_for_cms_text_plugins(html):
-        chunk = prepare_article_html_chunk(chunk)
+        chunk = _prepare_html(chunk)
         if not chunk:
             continue
         leading_tag = _chunk_leading_tag(chunk)
