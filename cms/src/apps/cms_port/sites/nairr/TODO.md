@@ -40,6 +40,9 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 
 ## Generic / Cross-Page
 
+- [ ] header [^5]
+- [ ] footer [^6]
+
 [^1]: `PORTAL_STYLES` loads `core-styles.cms.v3-bridge-for-v2-users.css`
       (https://github.com/TACC/Core-Styles/pull/683). Roster marks use
       `.annotation` (also `.u-annotation`; `nairr/css/annotation.css`); import
@@ -47,3 +50,5 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 [^2]: Style `<details>`/`<summary>` accordion instances (FAQ narrow-screen stacking works structurally, but needs visual styling — there's an existing class name for this that we couldn't recall; find/confirm it before hand-rolling new CSS).
 [^3]: Style the "Copy the URL" button (`button.nairr-faq-copy-url`).
 [^4]: Review recurring page structure/patterns across pages once more are imported, to spot shared edge cases before writing more `SECTION_OVERRIDES`.
+[^5]: NAIRR header branding (logo, nav) vs https://nairrpilot.org.
+[^6]: NAIRR footer branding vs https://nairrpilot.org.
