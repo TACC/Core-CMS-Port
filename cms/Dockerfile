@@ -1,4 +1,4 @@
-FROM taccwma/core-cms:v4.41.0-rc1
+FROM taccwma/core-cms:fix-1084-settings-overwrites
 
 WORKDIR /code
 

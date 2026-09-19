@@ -1,5 +1,7 @@
 # CMS Settings
 
-If you edit these files on the host, docker container does not know.
+Client overwrites live in `overwrites/`. Mount that directory into the
+container (not all of `settings/`).
 
-Restart docker container for it to sync your edits to these files.
+If you edit these files on the host, restart the docker container for it to
+sync your edits.
