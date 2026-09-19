@@ -17,7 +17,7 @@ PROJECT_ROOT="${SCRIPT_DIR}/.."
 SRC_ROOT="${SCRIPT_DIR}/../src"
 
 # Configure fallback for settings
-VERSION="v4.41.0-rc1"
+VERSION="fix/1084-settings-overwrites"
 BASE_URL="https://cdn.jsdelivr.net/gh/TACC/Core-CMS@${VERSION}"
 
 # Functions
@@ -73,11 +73,12 @@ fi
 
 # Check for required settings files (local first, then remote)
 echo -e "${INF}Checking for required settings files...${RST}"
+mkdir -p taccsite_cms/settings/overwrites
 FAILED_DOWNLOADS=()
 for file in settings_custom settings_local secrets; do
-    settings_file="taccsite_cms/settings/${file}.py"
-    example_file="taccsite_cms/settings/${file}.example.py"
-    url="${BASE_URL}/taccsite_cms/settings/${file}.example.py"
+    settings_file="taccsite_cms/settings/overwrites/${file}.py"
+    example_file="taccsite_cms/settings/overwrites/${file}.example.py"
+    url="${BASE_URL}/taccsite_cms/settings/overwrites/${file}.example.py"
 
     if [ ! -f "$settings_file" ]; then
         if [ -f "$example_file" ]; then
