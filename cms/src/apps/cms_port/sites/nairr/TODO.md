@@ -6,6 +6,7 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 
 ## Pages
 
+- [x] `home`
 - [x] `about/overview`
     - [x] https://github.com/wesleyboar/Core-CMS-Port/pull/2
     - [x] fix headings via Core-Styles v3 bridge for v2 users [^1]

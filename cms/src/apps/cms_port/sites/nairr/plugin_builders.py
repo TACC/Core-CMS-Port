@@ -328,47 +328,121 @@ def _tile_html_from_element(element) -> str:
     return element.decode_contents().strip()
 
 
+def _home_items_grid(section):
+    return section.select_one('div.items-grid')
+
+
+def _home_section_inner_preamble(inner, grid) -> str | None:
+    """Heading, banners, and other markup in ``div.inner`` before the card grid."""
+    if not inner or not grid:
+        return None
+    parts: list[str] = []
+    for child in inner.children:
+        if child == grid:
+            break
+        name = getattr(child, 'name', None)
+        if name:
+            parts.append(str(child))
+    preamble = _prepare_html(''.join(parts).strip())
+    return preamble or None
+
+
+def _home_section_inner_footer(inner, grid) -> str | None:
+    """Buttons (or similar) in ``div.inner`` after the card grid."""
+    if not inner or not grid:
+        return None
+    parts: list[str] = []
+    seen_grid = False
+    for child in inner.children:
+        if child == grid:
+            seen_grid = True
+            continue
+        if not seen_grid:
+            continue
+        name = getattr(child, 'name', None)
+        if name:
+            parts.append(str(child))
+    footer = _prepare_html(''.join(parts).strip())
+    return footer or None
+
+
+def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
+    hero = soup.select_one('div.real-hero')
+    if hero:
+        builder.add_text(parent, _prepare_html(hero.decode_contents().strip()))
+        return
+    parts: list[str] = []
+    h1 = soup.find('h1')
+    if h1:
+        parts.append(str(h1))
+        h1.decompose()
+    about = soup.select_one('section.about')
+    if about:
+        parts.append(about.decode_contents().strip())
+        about.decompose()
+    combined = _prepare_html('\n'.join(parts).strip())
+    if combined:
+        builder.add_text(parent, combined)
+
+
+def _emit_home_shaded_card_section(builder: ContentBuilder, parent, section) -> None:
+    inner = section.select_one('div.inner') or section
+    grid = _home_items_grid(section)
+    container = builder.add_container(parent)
+    preamble = _home_section_inner_preamble(inner, grid)
+    if preamble:
+        builder.add_text(container, preamble)
+    if grid:
+        row = builder.add_row(container)
+        for item in grid.find_all('div', recursive=False):
+            inner_html = _tile_html_from_element(item)
+            if not inner_html or len(BeautifulSoup(inner_html, 'lxml').get_text(strip=True)) < 5:
+                continue
+            col = builder.add_column(row, xs_col=12)
+            builder.add_card_standard_text(col, _prepare_html(inner_html))
+    footer = _home_section_inner_footer(inner, grid)
+    if footer:
+        builder.add_text(container, footer)
+
+
 def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
     soup = BeautifulSoup(html, 'lxml')
 
-    hero = soup.select_one('div.real-hero')
-    if hero:
-        builder.add_text(
-            parent,
-            hero.decode_contents().strip(),
-        )
+    _emit_home_hero(builder, parent, soup)
 
     stats = soup.select_one('section.stats')
     if stats:
-        builder.add_text(parent, stats.decode_contents().strip())
+        builder.add_text(parent, _prepare_html(stats.decode_contents().strip()))
 
     for section in soup.select('section.section.shaded.pilot.opportunities, section.section.shaded.news.pilot'):
-        container = builder.add_container(parent)
-        row = builder.add_row(container)
-        for item in section.select('div.split.items-grid > div, div.items-grid > div'):
-            inner = _tile_html_from_element(item)
-            if not inner or len(BeautifulSoup(inner, 'lxml').get_text(strip=True)) < 5:
-                continue
-            col = builder.add_column(row, xs_col=12)
-            builder.add_card_standard_text(col, inner)
+        _emit_home_shaded_card_section(builder, parent, section)
 
     highlights = soup.select_one('section.section.projects-highlights')
     if highlights:
+        inner = highlights.select_one('div.inner') or highlights
+        highlights_grid = highlights.select_one('div.news-highlights')
         container = builder.add_container(parent, container_type='container')
-        row = builder.add_row(container)
-        for link in highlights.select('div.news-highlights a'):
-            tile_html = link.decode_contents().strip()
-            if not tile_html:
-                continue
-            href = link.get('href', '')
-            if href and href not in tile_html:
-                tile_html = f'<a href="{href}">{tile_html}</a>'
-            col = builder.add_column(row, xs_col=12)
-            builder.add_card_image_top_text(col, tile_html)
+        preamble = _home_section_inner_preamble(inner, highlights_grid)
+        if preamble:
+            builder.add_text(container, preamble)
+        if highlights_grid:
+            row = builder.add_row(container)
+            for link in highlights_grid.select('a'):
+                tile_html = link.decode_contents().strip()
+                if not tile_html:
+                    continue
+                href = link.get('href', '')
+                if href and href not in tile_html:
+                    tile_html = f'<a href="{href}">{tile_html}</a>'
+                col = builder.add_column(row, xs_col=12)
+                builder.add_card_image_top_text(col, _prepare_html(tile_html))
+        footer = _home_section_inner_footer(inner, highlights_grid)
+        if footer:
+            builder.add_text(container, footer)
 
     happenings = soup.select_one('section.section.happenings')
     if happenings:
-        builder.add_text(parent, happenings.decode_contents().strip())
+        builder.add_text(parent, _prepare_html(happenings.decode_contents().strip()))
 
 
 def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
