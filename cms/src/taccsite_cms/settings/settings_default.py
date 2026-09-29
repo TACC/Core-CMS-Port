@@ -11,30 +11,43 @@ SILENCED_SYSTEM_CHECKS = ['captcha.recaptcha_test_key_error']
 SESSION_COOKIE_SECURE = False
 
 ########################
-# CMS port (NAIRR Pilot)
+# CMS port (multi-site)
 ########################
 
 import os
 
 from taccsite_cms.settings.settings import BASE_DIR
 
+# Active port site for local dev (override per deploy in cms.settings_custom.py).
 CMS_PORT_SITE = 'nairr'
 
-NAIRR_SCRAPE_ROOT = os.path.join(BASE_DIR, 'scraped', 'nairr')
-NAIRR_SCRAPE_BASE_URL = 'https://nairrpilot.org'
-NAIRR_SCRAPE_CRAWL_DELAY = 1.0
+# Per-site scrape pipeline settings (see apps.cms_port.common.scrape_settings).
+# Camino projects may use legacy NAIRR_SCRAPE_* names instead; both work.
+CMS_PORT_SCRAPE = {
+    'nairr': {
+        'ROOT': os.path.join(BASE_DIR, 'scraped', 'nairr'),
+        'BASE_URL': 'https://nairrpilot.org',
+        'CRAWL_DELAY': 1.0,
+    },
+}
 
-# https://github.com/TACC/Core-Styles/pull/683
-PORTAL_STYLES = [
-    {
-        'is_remote': True,
-        'path': (
-            'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7'
-            '/dist/core-styles.cms.v3-bridge-for-v2-users.css'
-        ),
-    },
-    {
-        'is_remote': False,
-        'path': 'nairr/css/annotation.css',
-    },
-]
+# Per-site PORTAL_STYLES entries (keyed like CMS_PORT_SCRAPE).
+_CMS_PORT_CORE_STYLES_BRIDGE = {
+    'is_remote': True,
+    'path': (
+        'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7'
+        '/dist/core-styles.cms.v3-bridge-for-v2-users.css'
+    ),
+}
+
+CMS_PORT_PORTAL_STYLES = {
+    'nairr': [
+        _CMS_PORT_CORE_STYLES_BRIDGE,
+        {
+            'is_remote': False,
+            'path': 'nairr/css/annotation.css',
+        },
+    ],
+}
+
+PORTAL_STYLES = CMS_PORT_PORTAL_STYLES.get(CMS_PORT_SITE, [_CMS_PORT_CORE_STYLES_BRIDGE])

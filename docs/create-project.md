@@ -1,24 +1,39 @@
 # Create Project
 
-Add a new third-party site port under `cms_port`. One [Core-CMS-Port] repo; one shared Docker image ([Publishing](./PUBLISHING.md)). Copy [NAIRR](../cms/docs/port-nairr.md) as the reference implementation.
+1. [Register the Site](#register-the-site)
+2. [Document the Port](#document-the-port)
+3. [Scrape and Import](#scrape-and-import)
+4. [Publish the Project](#publish-the-project)
 
 ## Register the Site
 
-1. Pick `<site_id>` (lowercase; must match `apps.cms_port.sites.<site_id>`).
-2. Add `cms/src/apps/cms_port/sites/<site_id>/` (copy from NAIRR and rename). Include at minimum:
-   - `page_registry.py` — page tree, templates, scrape paths, `reverse_id` prefix
-   - `scrape_lib.py` — fetch HTML, extract content, read/write scrape files
-   - `import_pages.py` — scraped HTML → django CMS plugins
-   - `plugin_builders.py` — site-specific layout helpers
-   - `apps.py` — Django `AppConfig` (required if you add management commands)
-   - `static/<site_id>/` — CSS/JS for imported pages or `PORTAL_STYLES`
-   - `management/commands/` — optional aliases (e.g. `scrape_<site>_pages`)
-3. Add `apps.cms_port.sites.<site_id>` to `CUSTOM_APPS` in `cms/src/taccsite_cms/custom_app_settings.py` (keep `apps.cms_port`).
-4. Set `CMS_PORT_SITE = '<site_id>'` in `settings_default.py` for local dev, or in the Camino `cms.settings_custom.py` for that deployment.
-5. Add scrape settings your `scrape_lib` reads (NAIRR uses `NAIRR_SCRAPE_ROOT`, `NAIRR_SCRAPE_BASE_URL`, `NAIRR_SCRAPE_CRAWL_DELAY` in [nairr-oc `cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py)).
-6. Mount scrape storage:
-   - **Local:** `cms/docker-compose.dev.yml` → `./scraped/<site_id>:/code/scraped/<site_id>`
-   - **Camino:** host dir → `/code/scraped/<site_id>` in the project compose override (pipeline only; not required to serve pages).
+1. Decide on a lowercase `<site_id>`.
+2. Add `cms/src/apps/cms_port/sites/<site_id>/`.\
+  You can copy from NAIRR and rename.
+3. Ensure the site package includes *at minimum*:
+  - `page_registry.py` — 
+   page tree, templates, scrape paths, `reverse_id` prefix
+  - `scrape_lib.py` — 
+  fetch HTML, extract content, read/write scrape files (use `scrape_config` from `common/scrape_settings.py`)
+  - `import_pages.py` — 
+  scraped HTML → django CMS plugins
+  - `apps.py` — 
+  Django `AppConfig` (for step 5)
+4. <sup>(optional)</sup>\
+  Evaluate whether you need the following:
+  - `management/commands/` 
+   aliases (e.g. `scrape_<site_id>_pages` instead of `scrape_pages --site <site_id>`)
+  - `static/<site_id>/` 
+  temporary location for site-specific CSS/JS
+  - `plugin_builders.py`  
+  site-specific layout helpers
+5. <sup>(conditional) If you need `management/commands/` or `static/<site_id>/`</sup>\
+    In `cms/src/taccsite_cms/custom_app_settings.py`, to `CUSTOM_APPS`, add `apps.cms_port.sites.<site_id>`.
+6. Set `CMS_PORT_SITE` to the site you are working on in [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py) (local) or that project's `cms.settings_custom.py` (Camino).
+7. Add an entry under `CMS_PORT_SCRAPE` in the same settings file (or legacy `{PREFIX}_SCRAPE_*` keys in Camino).\
+   Examples: [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py) (`nairr` entry), [`scrape_settings.py`](../cms/src/apps/cms_port/common/scrape_settings.py), NAIRR Camino [`cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py) (`NAIRR_SCRAPE_*`).
+8. Scrape files live under `cms/scraped/<site_id>/` on the host ([`docker-compose.dev.yml`](../cms/docker-compose.dev.yml) mounts `./scraped` → `/code/scraped`).\
+   On Camino, add a host mount to `/code/scraped/<site_id>` in that project's compose override when you need the pipeline on server (see [nairr-oc overrides](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/docker-compose.dev.override.yml)).
 
 ## Document the Port
 
@@ -36,11 +51,8 @@ docker exec core_cms python manage.py create_pages --site <site_id> --page <page
 
 Shared helpers: `cms/src/apps/cms_port/common/`. See [port-nairr.md](../cms/docs/port-nairr.md) for NAIRR examples.
 
-## Ship in the Image
+## Publish the Project
 
-Merge site code to `main`. CI builds `taccwma/core-cms-port` with every registered site package in the image. Deploy steps: [Publishing](./PUBLISHING.md).
-
-<!-- Link Aliases -->
-
-[Core-CMS-Port]: https://github.com/TACC/Core-CMS-Port
-[Core Portal Deployments]: https://github.com/TACC/Core-Portal-Deployments
+1. Merge site code to `main`.
+2. Verify CI builds `taccwma/core-cms-port`.
+3. Follow [Publishing](./PUBLISHING.md).

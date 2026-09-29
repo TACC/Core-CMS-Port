@@ -23,6 +23,6 @@ docker exec core_cms python manage.py create_pages --site nairr --page about/ove
 
 Site-specific code, including the `*_nairr_*` management commands: `cms/src/apps/cms_port/sites/nairr/`. Shared helpers: `cms/src/apps/cms_port/common/`.
 
-A site package with its own management commands must be a registered Django app (see `sites/nairr/apps.py`) added to `CUSTOM_APPS` in `custom_app_settings.py` - here, `apps.cms_port.sites.nairr`.
+Register `apps.cms_port.sites.nairr` in `CUSTOM_APPS` (`sites/nairr/apps.py`) for site static and optional `scrape_nairr_pages` / `create_nairr_pages` aliases. Use `scrape_pages` / `create_pages` with `--site nairr` either way.
 
-Deployed CMS settings and scrape storage: [Core-Portal-Deployments `nairr-oc/camino`](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino) (`cms.settings_custom.py` sets `NAIRR_SCRAPE_ROOT`; Camino compose mounts host `${CAMINO_HOME}/data/nairr-scrape` at `/code/scraped/nairr`). Production image: `taccwma/core-cms-port` — see [Publishing](../../PUBLISHING.md).
+Deployed settings: [nairr-oc/camino](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino) (`NAIRR_SCRAPE_*` in `cms.settings_custom.py`; scrape volume in compose overrides). Local dev uses `CMS_PORT_SCRAPE['nairr']` in `settings_default.py`. Production image: `taccwma/core-cms-port` — [Publishing](../../PUBLISHING.md).

@@ -7,7 +7,8 @@ Requires beautifulsoup4 and requests in the CMS image.
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.cms_port.site_loader import load_site
+from apps.cms_port.common.scrape_settings import scrape_config
+from apps.cms_port.site_loader import default_site_id, load_site
 
 
 class Command(BaseCommand):
@@ -41,13 +42,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        site = load_site(options['site'])
+        site_id = (options['site'] or default_site_id()).strip().lower()
+        site = load_site(site_id)
         scrape_lib = site.scrape_lib
         page_registry = site.page_registry
 
         root = scrape_lib.scrape_root(settings)
         base = scrape_lib.base_url(settings)
-        delay = getattr(settings, 'NAIRR_SCRAPE_CRAWL_DELAY', 1.0)
+        delay = scrape_config(site_id, settings).crawl_delay
         root.mkdir(parents=True, exist_ok=True)
 
         paths = []
