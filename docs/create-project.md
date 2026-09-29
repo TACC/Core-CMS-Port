@@ -29,7 +29,7 @@
   site-specific layout helpers
 5. <sup>(conditional) If you need `management/commands/` or `static/<site_id>/`</sup>\
     In `cms/src/taccsite_cms/custom_app_settings.py`, to `CUSTOM_APPS`, add `apps.cms_port.sites.<site_id>`.
-6. Set `PORTAL_IMPORT_SITE` to the site you are working on in [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py) (local) or that project's `cms.settings_custom.py` (Camino).
+6. Set `PORTAL_SCRAPE_SITE` to the site you are working on in [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py) (local) or that project's `cms.settings_custom.py` (Camino).
 7. Add an entry under `PORTAL_SCRAPE` in the same settings file (`ROOT`, `BASE_URL`, `CRAWL_DELAY`).\
    Examples: [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py), NAIRR Camino [`cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py).
 8. Scrape files live under `cms/scraped/<site_id>/` on the host ([`docker-compose.dev.yml`](../cms/docker-compose.dev.yml) mounts `./scraped` → `/code/scraped`).\

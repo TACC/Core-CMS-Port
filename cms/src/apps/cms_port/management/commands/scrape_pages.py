@@ -17,7 +17,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--site',
             default=None,
-            help='Port site package (default: PORTAL_IMPORT_SITE or nairr)',
+            help='Port site package (default: PORTAL_SCRAPE_SITE or nairr)',
         )
         parser.add_argument(
             'page',

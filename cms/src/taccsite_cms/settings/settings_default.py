@@ -11,14 +11,14 @@ SILENCED_SYSTEM_CHECKS = ['captcha.recaptcha_test_key_error']
 SESSION_COOKIE_SECURE = False
 
 ########################
-# CMS port (multi-site)
+# CMS port (Multi-Site)
 ########################
 
 import os
 
 from taccsite_cms.settings.settings import BASE_DIR
 
-PORTAL_IMPORT_SITE = 'nairr'
+PORTAL_SCRAPE_SITE = 'nairr'
 
 PORTAL_SCRAPE = {
     'nairr': {
@@ -36,7 +36,7 @@ _PORTAL_CORE_STYLES_BRIDGE = {
     ),
 }
 
-PORTAL_SITE_STYLES = {
+PORTAL_SCRAPE_STYLES = {
     'nairr': [
         _PORTAL_CORE_STYLES_BRIDGE,
         {
@@ -46,4 +46,4 @@ PORTAL_SITE_STYLES = {
     ],
 }
 
-PORTAL_STYLES = PORTAL_SITE_STYLES.get(PORTAL_IMPORT_SITE, [_PORTAL_CORE_STYLES_BRIDGE])
+PORTAL_STYLES = PORTAL_SCRAPE_STYLES.get(PORTAL_SCRAPE_SITE, [_PORTAL_CORE_STYLES_BRIDGE])

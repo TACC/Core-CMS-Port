@@ -19,13 +19,13 @@ from apps.cms_port.site_loader import load_site
 
 
 class Command(BaseCommand):
-    help = 'Create CMS pages from scraped HTML (see PORTAL_IMPORT_SITE / --site).'
+    help = 'Create CMS pages from scraped HTML (see PORTAL_SCRAPE_SITE / --site).'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--site',
             default=None,
-            help='Port site package (default: PORTAL_IMPORT_SITE or nairr)',
+            help='Port site package (default: PORTAL_SCRAPE_SITE or nairr)',
         )
         parser.add_argument(
             '--page',

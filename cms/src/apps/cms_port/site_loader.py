@@ -9,7 +9,7 @@ from django.conf import settings
 
 
 def default_site_id() -> str:
-    return getattr(settings, 'PORTAL_IMPORT_SITE', 'nairr')
+    return getattr(settings, 'PORTAL_SCRAPE_SITE', 'nairr')
 
 
 def portal_scrape_entry(site_id: str):
