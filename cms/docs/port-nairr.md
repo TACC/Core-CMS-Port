@@ -25,4 +25,4 @@ Site-specific code, including the `*_nairr_*` management commands: `cms/src/apps
 
 A site package with its own management commands must be a registered Django app (see `sites/nairr/apps.py`) added to `CUSTOM_APPS` in `custom_app_settings.py` - here, `apps.cms_port.sites.nairr`.
 
-Production scrape path and branding: [Core-Portal-Deployments `nairr/camino`](https://github.com/TACC/Core-Portal-Deployments).
+Deployed CMS settings and scrape storage: [Core-Portal-Deployments `nairr-oc/camino`](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino) (`cms.settings_custom.py` sets `NAIRR_SCRAPE_ROOT`; Camino compose mounts host `${CAMINO_HOME}/data/nairr-scrape` at `/code/scraped/nairr`).
