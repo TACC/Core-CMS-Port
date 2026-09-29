@@ -32,6 +32,10 @@ class PlaceholderRootTextError(ValueError):
     """Text plugin attached directly to a page Content placeholder."""
 
 
+class PlaceholderRootTextError(ValueError):
+    """Text plugin attached directly to a page Content placeholder."""
+
+
 class ContentBuilder:
     def __init__(self, placeholder, language, *, enforce_placeholder_root_text: bool = True):
         self.placeholder = placeholder
