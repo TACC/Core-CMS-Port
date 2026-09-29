@@ -185,7 +185,7 @@ def add_article_text_plugins(
             section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
             builder.add_text(section, chunk)
         else:
-            builder.add_text(parent, chunk)
+            builder.add_text_in_container(parent, chunk)
 
 
 def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str | None = None) -> None:
@@ -535,7 +535,12 @@ def _home_section_inner_footer(inner, grid) -> str | None:
 def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
     hero = soup.select_one('div.real-hero')
     if hero:
-        builder.add_text(parent, _prepare_html(hero.decode_contents().strip()))
+        builder.add_text_in_container(
+            parent,
+            _prepare_html(hero.decode_contents().strip()),
+            container_type=GRID_CONTAINER_TYPE_SECTION,
+            tag_type='section',
+        )
         return
     parts: list[str] = []
     h1 = soup.find('h1')
@@ -548,7 +553,12 @@ def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> Non
         about.decompose()
     combined = _prepare_html('\n'.join(parts).strip())
     if combined:
-        builder.add_text(parent, combined)
+        builder.add_text_in_container(
+            parent,
+            combined,
+            container_type=GRID_CONTAINER_TYPE_SECTION,
+            tag_type='section',
+        )
 
 
 def _emit_home_shaded_card_section(builder: ContentBuilder, parent, section) -> None:
@@ -612,7 +622,10 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
 
     happenings = soup.select_one('section.section.happenings')
     if happenings:
-        builder.add_text(parent, _prepare_html(happenings.decode_contents().strip()))
+        builder.add_text_in_container(
+            parent,
+            _prepare_html(happenings.decode_contents().strip()),
+        )
 
 
 def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
@@ -621,7 +634,7 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
     pane = soup.select_one('div.contentpaneopen') or soup
     intro = pane.find('p')
     if intro:
-        builder.add_text(parent, intro.decode_contents().strip())
+        builder.add_text_in_container(parent, intro.decode_contents().strip())
     for subsection in pane.select('div.subsection'):
         step_title = subsection.find('h2')
         title_html = step_title.decode_contents().strip() if step_title else 'Step'
