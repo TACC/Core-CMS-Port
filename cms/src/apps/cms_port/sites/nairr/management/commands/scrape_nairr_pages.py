@@ -4,7 +4,7 @@ from apps.cms_port.management.commands.scrape_pages import Command as ScrapePage
 
 
 class Command(ScrapePagesCommand):
-    help = 'Scrape nairrpilot.org into NAIRR_SCRAPE_ROOT (alias for scrape_pages).'
+    help = 'Scrape nairrpilot.org (alias for scrape_pages --site nairr).'
 
     def add_arguments(self, parser):
         super().add_arguments(parser)

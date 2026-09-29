@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup, Comment
 
 from apps.cms_port.common.html_text import collapse_whitespace, polish_html_fragment
-from apps.cms_port.common.scrape_settings import scrape_config
+from apps.cms_port.site_loader import portal_scrape_entry
 from apps.cms_port.sites.nairr.page_registry import PLACEHOLDER_SENTINEL
 
 SITE_ID = 'nairr'
@@ -48,17 +48,13 @@ Joomla_PLACEHOLDER_RE = re.compile(
 
 
 def scrape_root(settings) -> Path:
-    from django.conf import settings as django_settings
-
-    return scrape_config(SITE_ID, django_settings).root
+    return portal_scrape_entry(SITE_ID)[0]
 
 
 def base_url(settings) -> str:
-    from django.conf import settings as django_settings
-
-    cfg = scrape_config(SITE_ID, django_settings)
-    if cfg.base_url:
-        return cfg.base_url
+    url = portal_scrape_entry(SITE_ID)[1]
+    if url:
+        return url
     return 'https://nairrpilot.org'
 
 
