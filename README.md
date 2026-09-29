@@ -2,14 +2,6 @@
 
 Ports a third-party website to Core-CMS.
 
-> [!IMPORTANT]
-> After creating a repository from [Core CMS Template]:
->
-> 4. [Start the project.][core-cms-template-start]
-> 5. [Configure the project.][core-cms-template-configure]
-> 6. Adapt or Remove "[Quick Start](#quick-start)" according to your project.
-> 9. **Delete this notice.**
-
 ## Quick Start
 
 Follow [Core CMS Template's "Start Project"][core-cms-template-start].
@@ -20,13 +12,6 @@ NAIRR Joomla port (scrape/import): see [cms/docs/port-nairr.md](cms/docs/port-na
 
 > [!TIP]
 > This project is built as a customization of a TACC <abbr title="Content Management System">CMS</abbr> website. To manage this project's CMS, reference [Core-CMS-Template Docs][core-cms-template-docs]. To develop this project's custom code, keep reading.
-
-> [!IMPORTANT]
-> After creating a repository from [Core CMS Template]:
->
-> 1. Document how to develop this project.
-> 2. **Delete this notice.**
-
 
 <!-- Link Aliases -->
 
