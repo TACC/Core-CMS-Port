@@ -25,4 +25,4 @@ Site-specific code, including the `*_nairr_*` management commands: `cms/src/apps
 
 Register `apps.cms_port.sites.nairr` in `CUSTOM_APPS` (`sites/nairr/apps.py`) for site static and optional `scrape_nairr_pages` / `create_nairr_pages` aliases. Use `scrape_pages` / `create_pages` with `--site nairr` either way.
 
-Deployed settings: [nairr-oc/camino](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino) (`PORTAL_SCRAPE_SITE`, `PORTAL_SCRAPE` in `cms.settings_custom.py`; scrape volume in compose overrides). Production image: `taccwma/core-cms-port` — [Publishing](../../PUBLISHING.md).
+Deployed settings: [nairr-oc/camino](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino) ([`PORTAL_SCRAPE_SITE` / `PORTAL_SCRAPE`](https://github.com/TACC/Core-Portal-Deployments/blob/687bf09bd0f22977fbf2ebc2279bed2b0885e7d6/nairr-oc/camino/cms.settings_custom.py#L113-L129); scrape volume in compose overrides). Production image: `taccwma/core-cms-port` — [Publishing](../../PUBLISHING.md).
