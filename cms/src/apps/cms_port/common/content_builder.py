@@ -14,11 +14,18 @@ from djangocms_snippet.models import Snippet
 from djangocms_style.cms_plugins import StylePlugin
 from djangocms_text_ckeditor.cms_plugins import TextPlugin
 
+from apps.cms_port.sites.nairr.card_skins import NAIRR_CARD_SKIN_STAT
+
 MUTED_SECTION = 'container  o-section o-section--style-muted'
 # DJANGOCMS_BOOTSTRAP4_GRID_CONTAINERS (admin label “Section”)
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
 # DJANGOCMS_STYLE_CHOICES
 STYLE_CLASS_NAME_SECTION = 'section'
+
+# Taccsite Card plugin skins (``class_name`` / editor label “Card style”)
+CARD_SKIN_PLAIN = 'c-card--plain'
+CARD_SKIN_STANDARD = 'c-card--standard'
+CARD_SKIN_STAT = NAIRR_CARD_SKIN_STAT
 
 
 class ContentBuilder:
@@ -80,18 +87,42 @@ class ContentBuilder:
             xl_col=xl_col,
         )
 
+    def add_card(
+        self,
+        parent,
+        *,
+        skin: str,
+        layout: str = 'default',
+        tag_type: str = 'article',
+    ):
+        """TACC Site **Card** plugin (``TaccsiteCardPlugin``), not generic Style."""
+        return add_plugin(
+            self.placeholder,
+            'TaccsiteCardPlugin',
+            self.language,
+            target=parent,
+            class_name=skin,
+            template=layout,
+            tag_type=tag_type,
+        )
+
     def add_card_standard_text(self, parent, html: str):
-        card = self.add_style(parent, 'card--standard', tag_type='article')
+        card = self.add_card(parent, skin=CARD_SKIN_STANDARD)
         self.add_text(card, html)
         return card
 
     def add_card_plain_text(self, parent, html: str):
-        card = self.add_style(parent, 'card--plain', tag_type='article')
+        card = self.add_card(parent, skin=CARD_SKIN_PLAIN)
         self.add_text(card, html)
         return card
 
     def add_card_image_top_text(self, parent, html: str):
-        card = self.add_style(parent, 'card--image-top', tag_type='article')
+        card = self.add_card(parent, skin=CARD_SKIN_STANDARD, layout='image_top')
+        self.add_text(card, html)
+        return card
+
+    def add_card_stat_text(self, parent, html: str):
+        card = self.add_card(parent, skin=CARD_SKIN_STAT)
         self.add_text(card, html)
         return card
 
