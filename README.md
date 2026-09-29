@@ -6,22 +6,27 @@ Ports third-party websites onto [Core CMS].
 
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
+- [Build & Deploy Project](#build-deploy-project)
 
 ## Quick Start
 
 Follow [Core CMS Template's "Start Project"][core-cms-template-start].
 
-NAIRR Joomla port (scrape/import): [cms/docs/port-nairr.md](cms/docs/port-nairr.md).
+Projects:
+- [NAIRR](cms/docs/port-nairr.md)
+- …
 
 ## Documentation
 
-| doc | contents |
-| - | - |
-| [docker-image.md](cms/docs/docker-image.md) | `taccwma/core-cms-port` — build, deploy, multi-site, graduate back to `core-cms` |
-| [port-nairr.md](cms/docs/port-nairr.md) | NAIRR scrape/import commands |
-
 > [!TIP]
-> This project is a TACC CMS customization. For day-to-day CMS ops, use [Core-CMS-Template Docs][core-cms-template-docs]. Port tooling lives under `cms/src/apps/cms_port/`.
+> This project is built as a customization of a TACC <abbr title="Content Management System">CMS</abbr> website. To manage this project's CMS, reference [Core-CMS-Template Docs][core-cms-template-docs]. To develop this project's custom code, keep reading.
+
+- [Create a New Project](./docs/create-project.md)
+- [Build and Publish a Project](./PUBLISHING.md)
+
+## Build & Deploy Project
+
+See [Publishing](./PUBLISHING.md).
 
 <!-- Link Aliases -->
 
