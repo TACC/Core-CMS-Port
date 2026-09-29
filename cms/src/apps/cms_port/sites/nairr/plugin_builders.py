@@ -185,7 +185,7 @@ def add_article_text_plugins(
             section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
             builder.add_text(section, chunk)
         else:
-            builder.add_text(parent, chunk)
+            builder.add_text_in_container(parent, chunk)
 
 
 def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str | None = None) -> None:
@@ -333,14 +333,16 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
 
     hero = soup.select_one('div.real-hero')
     if hero:
-        builder.add_text(
+        builder.add_text_in_container(
             parent,
             hero.decode_contents().strip(),
+            container_type=GRID_CONTAINER_TYPE_SECTION,
+            tag_type='section',
         )
 
     stats = soup.select_one('section.stats')
     if stats:
-        builder.add_text(parent, stats.decode_contents().strip())
+        builder.add_text_in_container(parent, stats.decode_contents().strip())
 
     for section in soup.select('section.section.shaded.pilot.opportunities, section.section.shaded.news.pilot'):
         container = builder.add_container(parent)
@@ -368,7 +370,7 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
 
     happenings = soup.select_one('section.section.happenings')
     if happenings:
-        builder.add_text(parent, happenings.decode_contents().strip())
+        builder.add_text_in_container(parent, happenings.decode_contents().strip())
 
 
 def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
@@ -377,7 +379,7 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
     pane = soup.select_one('div.contentpaneopen') or soup
     intro = pane.find('p')
     if intro:
-        builder.add_text(parent, intro.decode_contents().strip())
+        builder.add_text_in_container(parent, intro.decode_contents().strip())
     for subsection in pane.select('div.subsection'):
         step_title = subsection.find('h2')
         title_html = step_title.decode_contents().strip() if step_title else 'Step'

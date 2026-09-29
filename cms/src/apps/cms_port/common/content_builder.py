@@ -21,12 +21,26 @@ GRID_CONTAINER_TYPE_SECTION = 'o-section'
 STYLE_CLASS_NAME_SECTION = 'section'
 
 
+class PlaceholderRootTextError(ValueError):
+    """Text plugin attached directly to a page Content placeholder."""
+
+
 class ContentBuilder:
-    def __init__(self, placeholder, language):
+    def __init__(self, placeholder, language, *, enforce_placeholder_root_text: bool = True):
         self.placeholder = placeholder
         self.language = language
+        self.enforce_placeholder_root_text = enforce_placeholder_root_text
 
-    def add_text(self, parent, html: str):
+    def add_text(self, parent, html: str, *, allow_root: bool = False):
+        if (
+            parent is None
+            and self.enforce_placeholder_root_text
+            and not allow_root
+        ):
+            raise PlaceholderRootTextError(
+                'Text at Content placeholder root is not allowed; '
+                'use add_text_in_container() or nest under a container, column, or card.'
+            )
         return add_plugin(
             self.placeholder,
             TextPlugin,
@@ -34,6 +48,24 @@ class ContentBuilder:
             target=parent,
             body=html,
         )
+
+    def add_text_in_container(
+        self,
+        parent,
+        html: str,
+        *,
+        container_type: str = MUTED_SECTION,
+        tag_type: str = 'div',
+    ):
+        """Add a grid container (section) at ``parent``, then a Text plugin inside it."""
+        if not html or not str(html).strip():
+            return None
+        container = self.add_container(
+            parent,
+            container_type=container_type,
+            tag_type=tag_type,
+        )
+        return self.add_text(container, html)
 
     def add_style(self, parent, class_name: str, tag_type='div'):
         return add_plugin(
