@@ -1,4 +1,4 @@
-# NAIRR Pilot port (`cms_port`)
+# NAIRR Pilot Port (`cms_port`)
 
 Prerequisite: CMS running (`make start` from `cms/`).
 

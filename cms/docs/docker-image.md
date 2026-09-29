@@ -1,6 +1,6 @@
-# Docker image (`taccwma/core-cms-port`)
+# Docker Image (`taccwma/core-cms-port`)
 
-Shared CMS image for **third-party site ports** in this repo. One build can carry every site under `apps/cms_port/sites/`. Each Camino project picks its site via settings (see [Multi-site](#multi-site)).
+Shared CMS image for **third-party site ports** in this repo. One build can carry every site under `apps/cms_port/sites/`. Each Camino project picks its site via settings (see [Multi-Site](#multi-site)).
 
 When a port is done and you only need normal CMS operation, switch that project back to [`taccwma/core-cms`](https://hub.docker.com/r/taccwma/core-cms) (see [Graduate to Core-CMS](#graduate-to-core-cms)).
 
@@ -10,7 +10,7 @@ When a port is done and you only need normal CMS operation, switch that project 
 - [Core Portal Deployments] — `CMS_IMAGE` / `CMS_TAG` in `*/camino/*.env`
 - [port-nairr.md](./port-nairr.md) — NAIRR scrape/import workflow
 
-## Build & push
+## Build & Push
 
 | path | what |
 | - | - |
@@ -31,7 +31,7 @@ Pin the `FROM` line in `cms/Dockerfile` to a Core-CMS release tag when you cut d
 
 Example: [nairr-oc/camino](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino).
 
-## Multi-site
+## Multi-Site
 
 | piece | location |
 | - | - |
