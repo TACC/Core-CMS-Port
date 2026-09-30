@@ -104,7 +104,7 @@ class ContentBuilder:
         """Add a section grid container (and root Container when needed), then Text inside it."""
         if not html or not str(html).strip():
             return None
-        container = self.add_container_in_root(
+        container = self.add_section(
             parent,
             container_type,
             tag_type=tag_type,
@@ -137,7 +137,7 @@ class ContentBuilder:
         ):
             raise PlaceholderRootGridContainerError(
                 'Grid container at Content placeholder root is not allowed; '
-                'use add_container_in_root() or nest under a container, column, or card.'
+                'use add_section(), add_container_in_root(), or nest under a container, column, or card.'
             )
         return add_plugin(
             self.placeholder,
@@ -160,7 +160,7 @@ class ContentBuilder:
         parent = self._content_parent(parent, root_container_type=root_container_type)
         return self.add_container(parent, container_type, tag_type)
 
-    def add_section_container(
+    def add_section(
         self,
         parent,
         container_type=MUTED_SECTION,
@@ -168,7 +168,6 @@ class ContentBuilder:
         *,
         root_container_type: str = 'container',
     ):
-        """Alias for :meth:`add_container_in_root` (section-style grid containers)."""
         return self.add_container_in_root(
             parent,
             container_type,
