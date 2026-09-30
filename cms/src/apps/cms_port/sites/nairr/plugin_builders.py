@@ -641,7 +641,6 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
         footer = _home_section_inner_footer(inner, highlights_grid)
         if footer:
             builder.add_text(container, footer)
-
     happenings = soup.select_one('section.section.happenings')
     if happenings:
         builder.add_text_in_container(
