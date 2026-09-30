@@ -601,7 +601,7 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
     if highlights:
         inner = highlights.select_one('div.inner') or highlights
         highlights_grid = highlights.select_one('div.news-highlights')
-        container = builder.add_container_in_root(parent, 'container')
+        container = builder.add_section(parent)
         preamble = _home_section_inner_preamble(inner, highlights_grid)
         if preamble:
             builder.add_text(container, preamble)
@@ -638,7 +638,7 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
     for subsection in pane.select('div.subsection'):
         step_title = subsection.find('h2')
         title_html = step_title.decode_contents().strip() if step_title else 'Step'
-        container = builder.add_section(parent, 'container  o-section')
+        container = builder.add_section(parent)
         builder.add_text(container, f'<h2>{title_html}</h2>')
         for grid in subsection.select('div.hz-grid'):
             row = builder.add_row(container)

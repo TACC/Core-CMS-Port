@@ -24,6 +24,8 @@ STYLE_CLASS_NAME_SECTION = 'section'
 
 # Bootstrap4 grid Container plugin types allowed on the Content placeholder root.
 ROOT_GRID_CONTAINER_TYPES = frozenset({'container', 'container-fluid', ''})
+# Bootstrap4 admin "Container + Section" without a style; use Section (…) types instead.
+CONTAINER_PLUS_SECTION_GRID_TYPE = 'container  o-section'
 
 # Taccsite Card plugin skins (``class_name`` / editor label “Card style”)
 CARD_SKIN_PLAIN = 'c-card--plain'
@@ -73,6 +75,26 @@ class ContentBuilder:
             tag_type='div',
         )
         return self._content_root_container
+
+    def _is_direct_child_of_page_root(self, parent) -> bool:
+        return (
+            self._content_root_container is not None
+            and parent is not None
+            and getattr(parent, 'pk', None) == self._content_root_container.pk
+        )
+
+    def _validate_section_grid_under_page_root(self, parent, container_type: str) -> None:
+        if not self._is_direct_child_of_page_root(parent):
+            return
+        if (
+            container_type in ROOT_GRID_CONTAINER_TYPES
+            or container_type == CONTAINER_PLUS_SECTION_GRID_TYPE
+            or 'o-section' not in container_type
+        ):
+            raise PlaceholderRootGridContainerError(
+                'Only Section (…) grid containers are allowed inside the page root Container; '
+                'use add_section().'
+            )
 
     def add_text(self, parent, html: str, *, allow_root: bool = False):
         if (
@@ -139,6 +161,7 @@ class ContentBuilder:
                 'Grid container at Content placeholder root is not allowed; '
                 'use add_section(), add_container_in_root(), or nest under a container, column, or card.'
             )
+        self._validate_section_grid_under_page_root(parent, container_type)
         return add_plugin(
             self.placeholder,
             Bootstrap4GridContainerPlugin,
@@ -156,7 +179,7 @@ class ContentBuilder:
         *,
         root_container_type: str = 'container',
     ):
-        """Add a grid container under the page's single root Container, then return it."""
+        """Add a Section (…) grid container under the page's single root Container."""
         parent = self._content_parent(parent, root_container_type=root_container_type)
         return self.add_container(parent, container_type, tag_type)
 
