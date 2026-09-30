@@ -39,7 +39,7 @@
 
 ## Document the Port
 
-1. Add `cms/docs/site-<site_id>.md` (commands, paths, deployment notes).
+1. Add `docs/site-<site_id>.md` (intro and summary of that site's custom code).
 2. Link to it from [README](../README.md) under **Projects**.
 
 ## Scrape & Import

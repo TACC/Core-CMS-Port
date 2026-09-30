@@ -2,7 +2,7 @@
 
 Tracks page-by-page import progress and cross-cutting follow-ups for the
 `cms_port` NAIRR pipeline. See `page_registry.py` for the full page tree and
-`cms/docs/port-nairr.md` for scrape/import commands.
+`docs/site-nairr.md` for package overview.
 
 ## Pages
 
