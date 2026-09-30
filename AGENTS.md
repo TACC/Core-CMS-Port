@@ -53,8 +53,9 @@ Scrape third-party pages, then import into django CMS.
 
 When building **cards** from scraped Joomla HTML (`plugin_builders`):
 
+- Run tile body HTML through **`prepare_card_tile_html`** in `cms/src/apps/cms_port/common/card_tile_html.py` before Text plugins (Card or linked-card children). **Contract:** optional `img`, then one heading (`h3`, `h4`, or rarely `h5` only), then optional body (`p`, lists; text links in `p`, not buttons). Do not import scrape-only `span.header` / `span.content` or Joomla `div.content` wrappers.
 - Use the TACC Site **Card** plugin (`ContentBuilder.add_card` / `add_card_*_text` → `TaccsiteCardPlugin`), **not** the generic **Style** plugin with `card--*` classes. Editors change appearance via **Card style** (`class_name`) and **Additional classes** in the plugin form—do not bake skins only into import code.
-- **Statistic** figures use Card style `card--stat` (NAIRR registers **Statistic** in `sites/nairr/card_skins.py` at app ready).
+- Imported tiles default to **Plain** (`add_card_plain_text` / `CARD_SKIN_DEFAULT` in `content_builder`); **Statistic** figures use `add_card_stat_text` / `card--stat` (NAIRR registers **Statistic** in `sites/nairr/card_skins.py` at app ready). Use `add_card_standard_text` only when Standard is intentional.
 - Prefer **Bootstrap4 Link (button)** plugins for tile CTAs (same pattern as FAQ announcement banners: `ContentBuilder.add_button_link`), not scraped `a.more-btn` or `marketing-button` markup in the Text plugin body.
 - Home **stats** (`section.stats`): one Card per figure (`add_card_stat_text`), not Joomla `div.inner` / `statBox` / `major` / `minor` markup.
 - Home **opportunities banner** (`div.banner`): Bootstrap 4 `alert alert-info`, not Joomla icon + `div.content` markup.

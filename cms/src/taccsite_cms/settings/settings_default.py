@@ -34,4 +34,3 @@ PORTAL_SCRAPE = {
 #     'is_remote': True,
 #     'path': 'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7/dist/core-styles.cms.v3-bridge-for-v2-users.css',
 # }]
-
