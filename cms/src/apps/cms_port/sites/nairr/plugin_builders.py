@@ -538,6 +538,61 @@ def _home_section_inner_footer(inner, grid) -> str | None:
     return footer or None
 
 
+def _marketing_button_link_context(link) -> str:
+    classes = link.get('class') or []
+    return 'primary' if '--primary' in classes else 'secondary'
+
+
+def _home_section_marketing_buttons(inner, grid) -> list[dict]:
+    """``div.buttons`` markup after a home section card grid (e.g. section CTAs)."""
+    if not inner or not grid:
+        return []
+    buttons_div = None
+    seen_grid = False
+    for child in inner.children:
+        if child == grid:
+            seen_grid = True
+            continue
+        if not seen_grid:
+            continue
+        if getattr(child, 'name', None) == 'div':
+            classes = child.get('class') or []
+            if 'buttons' in classes:
+                buttons_div = child
+                break
+    if not buttons_div:
+        return []
+    ctas: list[dict] = []
+    for link in buttons_div.select('a[href]'):
+        name = collapse_whitespace(link.get_text())
+        url = link.get('href', '')
+        if not name or not url:
+            continue
+        ctas.append({
+            'name': name,
+            'url': url,
+            'target': link.get('target', ''),
+            'link_context': _marketing_button_link_context(link),
+        })
+    return ctas
+
+
+def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, grid) -> None:
+    ctas = _home_section_marketing_buttons(inner, grid)
+    if not ctas:
+        return
+    row = builder.add_row(container)
+    col = builder.add_column(row, xs_col=12)
+    for cta in ctas:
+        builder.add_button_link(
+            col,
+            name=cta['name'],
+            url=cta['url'],
+            link_target=cta['target'],
+            link_context=cta['link_context'],
+        )
+
+
 def _wrap_bare_content_links(tile) -> str:
     """Wrap bare ``div.content > a`` in ``<p>`` to match sibling news tiles."""
     soup = BeautifulSoup(f'<div data-nairr-tile>{tile.decode_contents()}</div>', 'lxml')
@@ -609,9 +664,12 @@ def _emit_home_shaded_card_section(
             if not inner_html or len(BeautifulSoup(inner_html, 'lxml').get_text(strip=True)) < 5:
                 continue
             builder.add_card_standard_text(col, _prepare_html(inner_html))
-    footer = _home_section_inner_footer(inner, grid)
-    if footer:
-        builder.add_text(container, footer)
+    if _home_section_marketing_buttons(inner, grid):
+        _emit_home_marketing_button_row(builder, container, inner, grid)
+    else:
+        footer = _home_section_inner_footer(inner, grid)
+        if footer:
+            builder.add_text(container, footer)
 
 
 def _home_section_class_str(section) -> str:
@@ -626,9 +684,12 @@ def _emit_home_highlights_section(
     container_type: str,
 ) -> None:
     inner = highlights.select_one('div.inner') or highlights
+    highlights_wrap = highlights.select_one('div.news-highlights-wrap')
     highlights_grid = highlights.select_one('div.news-highlights')
+    # Preamble/footer use a direct child of ``div.inner`` (the wrap), not the nested grid.
+    section_grid = highlights_wrap or highlights_grid
     container = builder.add_section(parent, container_type)
-    preamble = _home_section_inner_preamble(inner, highlights_grid)
+    preamble = _home_section_inner_preamble(inner, section_grid)
     if preamble:
         builder.add_text(container, preamble)
     if highlights_grid:
@@ -647,9 +708,12 @@ def _emit_home_highlights_section(
                 href,
                 link_target=link.get('target', ''),
             )
-    footer = _home_section_inner_footer(inner, highlights_grid)
-    if footer:
-        builder.add_text(container, footer)
+    if _home_section_marketing_buttons(inner, section_grid):
+        _emit_home_marketing_button_row(builder, container, inner, section_grid)
+    else:
+        footer = _home_section_inner_footer(inner, section_grid)
+        if footer:
+            builder.add_text(container, footer)
 
 
 def _emit_home_happenings_section(
