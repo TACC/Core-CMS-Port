@@ -14,6 +14,8 @@ from djangocms_snippet.models import Snippet
 from djangocms_style.cms_plugins import StylePlugin
 from djangocms_text_ckeditor.cms_plugins import TextPlugin
 
+from apps.cms_port.sites.nairr.card_skins import NAIRR_CARD_SKIN_STAT
+
 # taccsite_cms ``DJANGOCMS_BOOTSTRAP4_GRID_CONTAINERS``: bare Section + “Section only” group.
 SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
     'o-section',
@@ -24,12 +26,41 @@ SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
 })
 
 MUTED_SECTION = 'o-section o-section--style-muted'
+LIGHT_SECTION = 'o-section o-section--style-light'
+ACCENT_SECTION = 'o-section o-section--style-accent'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
 # DJANGOCMS_STYLE_CHOICES
 STYLE_CLASS_NAME_SECTION = 'section'
 
 # Bootstrap4 grid Container plugin types allowed on the Content placeholder root.
 ROOT_GRID_CONTAINER_TYPES = frozenset({'container', 'container-fluid', ''})
+
+# Taccsite Card plugin skins (``class_name`` / editor label “Card style”)
+CARD_SKIN_PLAIN = 'c-card--plain'
+CARD_SKIN_STANDARD = 'c-card--standard'
+CARD_SKIN_STAT = NAIRR_CARD_SKIN_STAT
+# Default skin for import helpers unless a tile explicitly needs Standard or Statistic.
+CARD_SKIN_DEFAULT = CARD_SKIN_PLAIN
+
+# Card layout modifiers (``TaccsiteCardPlugin`` template keys → Core-Styles classes).
+_CARD_LAYOUT_CLASS = {
+    'default': '',
+    'image_top': 'c-card--image-top',
+    'image_bottom': 'c-card--image-bottom',
+    'image_left': 'c-card--image-left',
+    'image_right': 'c-card--image-right',
+}
+
+
+def _card_link_class(skin: str, layout: str = 'default') -> str:
+    """``c-card`` classes for a Bootstrap4 Link styled as a Core-Styles card anchor."""
+    tokens = ['c-card']
+    if skin and skin != 'c-card':
+        tokens.append(skin)
+    layout_class = _CARD_LAYOUT_CLASS.get(layout, '')
+    if layout_class:
+        tokens.append(layout_class)
+    return ' '.join(tokens)
 
 
 class PlaceholderRootTextError(ValueError):
@@ -218,20 +249,109 @@ class ContentBuilder:
             xl_col=xl_col,
         )
 
+    def add_card(
+        self,
+        parent,
+        *,
+        skin: str,
+        layout: str = 'default',
+        tag_type: str = 'article',
+        attributes: dict | None = None,
+        additional_classes: str = '',
+    ):
+        """TACC Site **Card** plugin (``TaccsiteCardPlugin``), not generic Style."""
+        kwargs = {
+            'class_name': skin,
+            'template': layout,
+            'tag_type': tag_type,
+        }
+        if additional_classes:
+            kwargs['additional_classes'] = additional_classes
+        if attributes:
+            kwargs['attributes'] = attributes
+        return add_plugin(
+            self.placeholder,
+            'TaccsiteCardPlugin',
+            self.language,
+            target=parent,
+            **kwargs,
+        )
+
     def add_card_standard_text(self, parent, html: str):
-        card = self.add_style(parent, 'card--standard', tag_type='article')
+        card = self.add_card(parent, skin=CARD_SKIN_STANDARD)
         self.add_text(card, html)
         return card
 
-    def add_card_plain_text(self, parent, html: str):
-        card = self.add_style(parent, 'card--plain', tag_type='article')
+    def add_card_plain_text(
+        self,
+        parent,
+        html: str,
+        *,
+        attributes: dict | None = None,
+        additional_classes: str = '',
+    ):
+        card = self.add_card(
+            parent,
+            skin=CARD_SKIN_PLAIN,
+            attributes=attributes,
+            additional_classes=additional_classes,
+        )
         self.add_text(card, html)
         return card
 
     def add_card_image_top_text(self, parent, html: str):
-        card = self.add_style(parent, 'card--image-top', tag_type='article')
+        card = self.add_card(parent, skin=CARD_SKIN_DEFAULT, layout='image_top')
         self.add_text(card, html)
         return card
+
+    def add_card_stat_text(self, parent, html: str):
+        card = self.add_card(parent, skin=CARD_SKIN_STAT)
+        self.add_text(card, html)
+        return card
+
+    def add_card_link(
+        self,
+        parent,
+        *,
+        skin: str,
+        url: str,
+        layout: str = 'default',
+        link_target: str = '',
+        name: str = '',
+    ):
+        """Whole-card link via Bootstrap4 Link + ``c-card`` classes (until Card plugin supports href)."""
+        plugin = add_plugin(
+            self.placeholder,
+            'Bootstrap4LinkPlugin',
+            self.language,
+            target=parent,
+            name=name,
+            external_link=url,
+            link_type='link',
+            attributes={'class': _card_link_class(skin, layout)},
+        )
+        if link_target:
+            plugin.target = link_target
+            plugin.save()
+        return plugin
+
+    def add_linked_card_image_top_text(
+        self,
+        parent,
+        html: str,
+        url: str,
+        *,
+        link_target: str = '',
+    ):
+        card_link = self.add_card_link(
+            parent,
+            skin=CARD_SKIN_DEFAULT,
+            url=url,
+            layout='image_top',
+            link_target=link_target,
+        )
+        self.add_text(card_link, html)
+        return card_link
 
     def add_button_link(self, parent, *, name: str, url: str, link_target: str = '', link_context: str = 'primary'):
         """Bootstrap4 Link/Button plugin (link_type='btn') pointed at an external URL.

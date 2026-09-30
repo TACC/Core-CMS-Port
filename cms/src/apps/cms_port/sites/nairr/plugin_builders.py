@@ -5,10 +5,15 @@ from __future__ import annotations
 from bs4 import BeautifulSoup
 
 from apps.cms_port.common.content_builder import (
+    ACCENT_SECTION,
     ContentBuilder,
-    GRID_CONTAINER_TYPE_SECTION,
+    LIGHT_SECTION,
     MUTED_SECTION,
     STYLE_CLASS_NAME_SECTION,
+)
+from apps.cms_port.common.card_tile_html import (
+    prepare_card_tile_html,
+    prepare_card_tile_html_from_element,
 )
 from apps.cms_port.common.html_text import (
     collapse_whitespace,
@@ -128,12 +133,12 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
             for column_div in column_divs:
                 col = builder.add_column(row, xs_col=12, lg_col=lg_col)
                 for team in column_div.select('div.team'):
-                    inner = _prepare_html(team.decode_contents().strip())
+                    inner = _prepare_html(prepare_card_tile_html_from_element(team))
                     if inner:
                         builder.add_card_plain_text(col, inner)
         else:
             for team in teams.select('div.team'):
-                inner = _prepare_html(team.decode_contents().strip())
+                inner = _prepare_html(prepare_card_tile_html_from_element(team))
                 if inner:
                     builder.add_card_plain_text(section, inner)
     else:
@@ -215,7 +220,7 @@ def build_sidebar_article(
         add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
     if banner_html:
         side_col = builder.add_column(row, xs_col=12, lg_col=4)
-        builder.add_card_standard_text(side_col, banner_html)
+        builder.add_card_plain_text(side_col, banner_html)
 
 
 def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
@@ -232,6 +237,9 @@ def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
         }
         controls = link.find_parent('div', class_='controls') or link
         controls.decompose()
+    if root:
+        for wrapper in root.select('div.with-controls'):
+            wrapper.unwrap()
     body_html = root.decode_contents().strip() if root else banner_html
     return body_html, cta
 
@@ -266,7 +274,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         body_html, cta = _extract_banner_cta(banner_html)
         banner_row = builder.add_row(wrapper)
         banner_col = builder.add_column(banner_row, xs_col=12)
-        card = builder.add_card_standard_text(banner_col, body_html)
+        card = builder.add_card_plain_text(banner_col, body_html)
         if cta and cta['url']:
             builder.add_button_link(card, name=cta['name'], url=cta['url'], link_target=cta['target'])
 
@@ -324,53 +332,434 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         builder.add_text(body_col, '\n'.join(details_blocks))
 
 
-def _tile_html_from_element(element) -> str:
-    return element.decode_contents().strip()
+def _extract_more_button_cta(root) -> dict | None:
+    """Pull ``div.more-buttons`` / ``a.more-btn`` into a Bootstrap4 Link (btn) plugin."""
+    link = root.select_one('div.more-buttons a[href], a.more-btn[href]')
+    if not link:
+        return None
+    cta = {
+        'name': collapse_whitespace(link.get_text()),
+        'url': link.get('href', ''),
+        'target': link.get('target', ''),
+    }
+    more = root.select_one('div.more-buttons')
+    if more:
+        more.decompose()
+    return cta
+
+
+def _prepare_opportunity_tile_html(tile) -> tuple[str | None, dict | None]:
+    soup = BeautifulSoup(f'<div data-nairr-tile>{tile.decode_contents()}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-tile]')
+    if not root:
+        return None, None
+    cta = _extract_more_button_cta(root)
+    body = _prepare_html(prepare_card_tile_html(root.decode_contents().strip()))
+    if not body or len(BeautifulSoup(body, 'lxml').get_text(strip=True)) < 5:
+        return None, cta
+    return body, cta
+
+
+def _emit_home_opportunity_card(builder: ContentBuilder, col, tile) -> None:
+    body, cta = _prepare_opportunity_tile_html(tile)
+    if not body:
+        return
+    card = builder.add_card_plain_text(col, body)
+    if cta and cta['url']:
+        builder.add_button_link(
+            card,
+            name=cta['name'],
+            url=cta['url'],
+            link_target=cta['target'],
+        )
+
+
+def _is_home_opportunities_section(section) -> bool:
+    classes = section.get('class') or []
+    return 'opportunities' in classes
+
+
+def _home_stat_box_body_and_cta(stat_box) -> tuple[str | None, dict | None]:
+    stat = stat_box.select_one('.stat')
+    label = stat_box.select_one('.label')
+    link = stat_box.select_one('.action a[href]')
+    parts: list[str] = []
+    if stat:
+        parts.append(f'<h3>{collapse_whitespace(stat.get_text())}</h3>')
+    if label:
+        parts.append(f'<p>{collapse_whitespace(label.get_text())}</p>')
+    body = _prepare_html(''.join(parts).strip())
+    if not body:
+        return None, None
+    cta = None
+    if link and link.get('href'):
+        cta = {
+            'name': collapse_whitespace(link.get_text()),
+            'url': link.get('href', ''),
+            'target': link.get('target', ''),
+            'link_context': 'primary' if '--primary' in (link.get('class') or []) else 'secondary',
+        }
+    return body, cta
+
+
+def _emit_home_stat_boxes_row(builder: ContentBuilder, container, stat_boxes) -> None:
+    boxes = list(stat_boxes)
+    if not boxes:
+        return
+    row = builder.add_row(container)
+    lg_col = 12 // len(boxes) if len(boxes) else 6
+    for stat_box in boxes:
+        body, cta = _home_stat_box_body_and_cta(stat_box)
+        if not body:
+            continue
+        # 1 col below sm (`col-12`), 2 col from sm/md (`col-sm-6`), major/minor split at lg+.
+        col = builder.add_column(row, xs_col=12, sm_col=6, md_col=6, lg_col=lg_col)
+        card = builder.add_card_stat_text(col, body)
+        if cta and cta['url']:
+            builder.add_button_link(
+                card,
+                name=cta['name'],
+                url=cta['url'],
+                link_target=cta['target'],
+                link_context=cta.get('link_context', 'primary'),
+            )
+
+
+def _emit_home_stats(builder: ContentBuilder, container, stats_section) -> None:
+    inner = stats_section.select_one('div.inner') or stats_section
+    major = inner.select_one('div.major')
+    minor = inner.select_one('div.minor')
+    if major:
+        _emit_home_stat_boxes_row(builder, container, major.select('div.statBox'))
+    if minor:
+        _emit_home_stat_boxes_row(builder, container, minor.select('div.statBox'))
+    buttons = inner.select_one('div.buttons')
+    if buttons:
+        row = builder.add_row(container)
+        col = builder.add_column(row, xs_col=12)
+        for link in buttons.select('a[href]'):
+            name = collapse_whitespace(link.get_text())
+            url = link.get('href', '')
+            if not name or not url:
+                continue
+            classes = link.get('class') or []
+            context = 'primary' if '--primary' in classes else 'secondary'
+            builder.add_button_link(
+                col,
+                name=name,
+                url=url,
+                link_target=link.get('target', ''),
+                link_context=context,
+            )
+
+
+def _home_items_grid(section):
+    return section.select_one('div.items-grid')
+
+
+def _home_opportunities_banner_alert_html(banner) -> str:
+    """Joomla ``div.banner`` (icon + ``div.content``) → Bootstrap 4 alert."""
+    content = banner.select_one('div.content')
+    if content:
+        inner = _prepare_html(content.decode_contents().strip())
+    else:
+        fragment = BeautifulSoup(str(banner), 'lxml')
+        root = fragment.find('div', class_=lambda c: c and 'banner' in c)
+        if not root:
+            return ''
+        for node in root.select('div.icon'):
+            node.decompose()
+        for node in root.select('div.content'):
+            node.unwrap()
+        inner = _prepare_html(root.decode_contents().strip())
+    if not inner:
+        return ''
+    return f'<div class="alert alert-info" role="alert">{inner}</div>'
+
+
+def _home_section_preamble_child_html(child) -> str | None:
+    name = getattr(child, 'name', None)
+    if not name:
+        return None
+    classes = child.get('class') or []
+    if name == 'div' and 'banner' in classes:
+        return _home_opportunities_banner_alert_html(child)
+    return str(child)
+
+
+def _home_section_inner_preamble(inner, grid) -> str | None:
+    """Heading, banners, and other markup in ``div.inner`` before the card grid."""
+    if not inner or not grid:
+        return None
+    parts: list[str] = []
+    for child in inner.children:
+        if child == grid:
+            break
+        chunk = _home_section_preamble_child_html(child)
+        if chunk:
+            parts.append(chunk)
+    preamble = _prepare_html(''.join(parts).strip())
+    return preamble or None
+
+
+def _home_section_inner_footer(inner, grid) -> str | None:
+    """Buttons (or similar) in ``div.inner`` after the card grid."""
+    if not inner or not grid:
+        return None
+    parts: list[str] = []
+    seen_grid = False
+    for child in inner.children:
+        if child == grid:
+            seen_grid = True
+            continue
+        if not seen_grid:
+            continue
+        name = getattr(child, 'name', None)
+        if name:
+            parts.append(str(child))
+    footer = _prepare_html(''.join(parts).strip())
+    return footer or None
+
+
+def _marketing_button_link_context(link) -> str:
+    classes = link.get('class') or []
+    return 'primary' if '--primary' in classes else 'secondary'
+
+
+def _home_section_marketing_buttons(inner, grid) -> list[dict]:
+    """``div.buttons`` markup after a home section card grid (e.g. section CTAs)."""
+    if not inner or not grid:
+        return []
+    buttons_div = None
+    seen_grid = False
+    for child in inner.children:
+        if child == grid:
+            seen_grid = True
+            continue
+        if not seen_grid:
+            continue
+        if getattr(child, 'name', None) == 'div':
+            classes = child.get('class') or []
+            if 'buttons' in classes:
+                buttons_div = child
+                break
+    if not buttons_div:
+        return []
+    ctas: list[dict] = []
+    for link in buttons_div.select('a[href]'):
+        name = collapse_whitespace(link.get_text())
+        url = link.get('href', '')
+        if not name or not url:
+            continue
+        ctas.append({
+            'name': name,
+            'url': url,
+            'target': link.get('target', ''),
+            'link_context': _marketing_button_link_context(link),
+        })
+    return ctas
+
+
+def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, grid) -> None:
+    ctas = _home_section_marketing_buttons(inner, grid)
+    if not ctas:
+        return
+    row = builder.add_row(container)
+    col = builder.add_column(row, xs_col=12)
+    for cta in ctas:
+        builder.add_button_link(
+            col,
+            name=cta['name'],
+            url=cta['url'],
+            link_target=cta['target'],
+            link_context=cta['link_context'],
+        )
+
+
+def _emit_home_accent_intro_and_stats(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
+    """One accent section for hero/about copy and stats (avoid adjacent duplicate section styles)."""
+    hero = soup.select_one('div.real-hero')
+    parts: list[str] = []
+    if hero:
+        parts.append(hero.decode_contents().strip())
+    else:
+        h1 = soup.find('h1')
+        if h1:
+            parts.append(str(h1))
+            h1.decompose()
+        about = soup.select_one('section.about')
+        if about:
+            parts.append(about.decode_contents().strip())
+            about.decompose()
+    intro = _prepare_html('\n'.join(parts).strip())
+    stats = soup.select_one('section.stats')
+    if not intro and not stats:
+        return
+    container = builder.add_section(parent, ACCENT_SECTION, tag_type='section')
+    if intro:
+        builder.add_text(container, intro)
+    if stats:
+        _emit_home_stats(builder, container, stats)
+
+
+def _emit_home_shaded_card_section(
+    builder: ContentBuilder,
+    parent,
+    section,
+    *,
+    container_type: str,
+) -> None:
+    inner = section.select_one('div.inner') or section
+    grid = _home_items_grid(section)
+    container = builder.add_section(parent, container_type)
+    preamble = _home_section_inner_preamble(inner, grid)
+    if preamble:
+        builder.add_text(container, preamble)
+    opportunities = _is_home_opportunities_section(section)
+    if grid:
+        row = builder.add_row(container)
+        for item in grid.find_all('div', recursive=False):
+            col = builder.add_column(row, xs_col=12)
+            if opportunities:
+                _emit_home_opportunity_card(builder, col, item)
+                continue
+            inner_html = prepare_card_tile_html_from_element(item)
+            if not inner_html or len(BeautifulSoup(inner_html, 'lxml').get_text(strip=True)) < 5:
+                continue
+            builder.add_card_plain_text(col, _prepare_html(inner_html))
+    if _home_section_marketing_buttons(inner, grid):
+        _emit_home_marketing_button_row(builder, container, inner, grid)
+    else:
+        footer = _home_section_inner_footer(inner, grid)
+        if footer:
+            builder.add_text(container, footer)
+
+
+def _home_section_class_str(section) -> str:
+    return ' '.join(section.get('class') or [])
+
+
+def _emit_home_highlights_section(
+    builder: ContentBuilder,
+    parent,
+    highlights,
+    *,
+    container_type: str,
+) -> None:
+    inner = highlights.select_one('div.inner') or highlights
+    highlights_wrap = highlights.select_one('div.news-highlights-wrap')
+    highlights_grid = highlights.select_one('div.news-highlights')
+    # Preamble/footer use a direct child of ``div.inner`` (the wrap), not the nested grid.
+    section_grid = highlights_wrap or highlights_grid
+    container = builder.add_section(parent, container_type)
+    preamble = _home_section_inner_preamble(inner, section_grid)
+    if preamble:
+        builder.add_text(container, preamble)
+    if highlights_grid:
+        row = builder.add_row(container)
+        for link in highlights_grid.select('a'):
+            tile_html = prepare_card_tile_html(link.decode_contents().strip())
+            if not tile_html:
+                continue
+            href = link.get('href', '')
+            if not href:
+                continue
+            col = builder.add_column(row, xs_col=12)
+            builder.add_linked_card_image_top_text(
+                col,
+                _prepare_html(tile_html),
+                href,
+                link_target=link.get('target', ''),
+            )
+    if _home_section_marketing_buttons(inner, section_grid):
+        _emit_home_marketing_button_row(builder, container, inner, section_grid)
+    else:
+        footer = _home_section_inner_footer(inner, section_grid)
+        if footer:
+            builder.add_text(container, footer)
+
+
+# ``o-columns`` = CSS multicol (not Bootstrap grid ``.col-*``); ``p-5`` = Card padding utility.
+_COLUMNS_PATTERN_CLASS = 'o-columns'
+_PARTNER_LIST_CARD_ADDITIONAL_CLASSES = f'p-5 {_COLUMNS_PATTERN_CLASS}'
+
+
+def _home_partners_list_html(ul) -> str:
+    items = []
+    for li in ul.find_all('li', recursive=False):
+        items.append(f'<li>{li.decode_contents().strip()}</li>')
+    return f'<ul>{"".join(items)}</ul>'
+
+
+def _emit_home_happenings_section(
+    builder: ContentBuilder,
+    parent,
+    happenings,
+    *,
+    container_type: str,
+) -> None:
+    inner = happenings.select_one('div.inner') or happenings
+    container = builder.add_section(parent, container_type)
+    for child in inner.children:
+        if not getattr(child, 'name', None):
+            continue
+        classes = child.get('class') or []
+        if child.name == 'ul' and 'partners-list' in classes:
+            list_html = _prepare_html(_home_partners_list_html(child))
+            builder.add_card_plain_text(
+                container,
+                list_html,
+                additional_classes=_PARTNER_LIST_CARD_ADDITIONAL_CLASSES,
+            )
+            continue
+        chunk = _prepare_html(str(child))
+        if chunk:
+            builder.add_text(container, chunk)
+
+
+def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
+    """``section.content > div.inner`` blocks in scrape document order."""
+    content_inner = soup.select_one('section.content > div.inner')
+    if not content_inner:
+        return
+    for section in content_inner.find_all('section', recursive=False):
+        classes = _home_section_class_str(section)
+        if 'opportunities' in classes:
+            _emit_home_shaded_card_section(
+                builder,
+                parent,
+                section,
+                container_type=MUTED_SECTION,
+            )
+        elif 'projects-highlights' in classes:
+            _emit_home_highlights_section(
+                builder,
+                parent,
+                section,
+                container_type=LIGHT_SECTION,
+            )
+        elif 'news' in classes:
+            _emit_home_shaded_card_section(
+                builder,
+                parent,
+                section,
+                container_type=MUTED_SECTION,
+            )
+        elif 'happenings' in classes:
+            _emit_home_happenings_section(
+                builder,
+                parent,
+                section,
+                container_type=LIGHT_SECTION,
+            )
 
 
 def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
     soup = BeautifulSoup(html, 'lxml')
 
-    hero = soup.select_one('div.real-hero')
-    if hero:
-        builder.add_text_in_container(
-            parent,
-            hero.decode_contents().strip(),
-            container_type=GRID_CONTAINER_TYPE_SECTION,
-            tag_type='section',
-        )
+    _emit_home_accent_intro_and_stats(builder, parent, soup)
 
-    stats = soup.select_one('section.stats')
-    if stats:
-        builder.add_text_in_container(parent, stats.decode_contents().strip())
-
-    for section in soup.select('section.section.shaded.pilot.opportunities, section.section.shaded.news.pilot'):
-        container = builder.add_section(parent)
-        row = builder.add_row(container)
-        for item in section.select('div.split.items-grid > div, div.items-grid > div'):
-            inner = _tile_html_from_element(item)
-            if not inner or len(BeautifulSoup(inner, 'lxml').get_text(strip=True)) < 5:
-                continue
-            col = builder.add_column(row, xs_col=12)
-            builder.add_card_standard_text(col, inner)
-
-    highlights = soup.select_one('section.section.projects-highlights')
-    if highlights:
-        container = builder.add_section(parent)
-        row = builder.add_row(container)
-        for link in highlights.select('div.news-highlights a'):
-            tile_html = link.decode_contents().strip()
-            if not tile_html:
-                continue
-            href = link.get('href', '')
-            if href and href not in tile_html:
-                tile_html = f'<a href="{href}">{tile_html}</a>'
-            col = builder.add_column(row, xs_col=12)
-            builder.add_card_image_top_text(col, tile_html)
-
-    happenings = soup.select_one('section.section.happenings')
-    if happenings:
-        builder.add_text_in_container(parent, happenings.decode_contents().strip())
+    _emit_home_content_inner_sections(builder, parent, soup)
 
 
 def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
@@ -389,7 +778,10 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
             row = builder.add_row(container)
             for link in grid.select('a.no-underline'):
                 col = builder.add_column(row, xs_col=12)
-                builder.add_card_plain_text(col, link.decode_contents().strip())
+                builder.add_card_plain_text(
+                    col,
+                    _prepare_html(prepare_card_tile_html(link.decode_contents().strip())),
+                )
 
 
 def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_selector: str, html: str) -> None:
@@ -400,7 +792,7 @@ def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_
     container = builder.add_section(parent)
     row = builder.add_row(container)
     for item in section.select('div.items-grid > div, div.split > div'):
-        inner = _tile_html_from_element(item)
+        inner = prepare_card_tile_html_from_element(item)
         if inner:
             col = builder.add_column(row, xs_col=12)
-            builder.add_card_standard_text(col, inner)
+            builder.add_card_plain_text(col, _prepare_html(inner))
