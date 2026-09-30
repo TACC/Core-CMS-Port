@@ -9,7 +9,7 @@
 
 This repository **ports third-party websites to Core-CMS**. The runnable CMS is a **Docker-based Django** project under `cms/`.
 
-Run `make` and other CMS dev workflows from `cms/`. For services, setup, dependencies, gotchas, and lint/test/build, follow [Architecture](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#architecture) in [TACC/Core-CMS:`/main/AGENTS.md`](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md) (paths are relative to `cms/` as the project root).
+Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architecture"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#architecture).
 
 ### Layout
 
@@ -24,13 +24,7 @@ Run `make` and other CMS dev workflows from `cms/`. For services, setup, depende
 
 ### Services
 
-Run from `cms/`. Container names match upstream Core-CMS:
-
-| Service | Container |
-| --- | --- |
-| Django CMS (app) | `core_cms` |
-| PostgreSQL | `core_cms_postgres` |
-| Elasticsearch | `core_cms_elasticsearch` |
+Follow [Core-CMS "Services"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#services).
 
 ### Port workflow
 
@@ -42,12 +36,12 @@ NAIRR Joomla port (scrape/import): see `cms/docs/port-nairr.md`.
 
 ## Vocab
 
-Follow [Vocab](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#vocab) in [TACC/Core-CMS:`/main/AGENTS.md`](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md).
+Follow [Core-CMS "Vocab"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#vocab).
 
 ## Commits
 
-Follow [Commits](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#commits) in [TACC/Core-CMS:`/main/AGENTS.md`](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md).
+Follow [Core-CMS "Commits"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#commits).
 
 ## Pull Requests
 
-Follow [Pull Requests](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#pull-requests) in [TACC/Core-CMS:`/main/AGENTS.md`](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md).
+Follow [Core-CMS "Pull Requests"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#pull-requests).
