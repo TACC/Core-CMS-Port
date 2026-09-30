@@ -5,8 +5,8 @@ from __future__ import annotations
 from bs4 import BeautifulSoup
 
 from apps.cms_port.common.content_builder import (
+    ACCENT_SECTION,
     ContentBuilder,
-    GRID_CONTAINER_TYPE_SECTION,
     LIGHT_SECTION,
     MUTED_SECTION,
     STYLE_CLASS_NAME_SECTION,
@@ -436,24 +436,9 @@ def _emit_home_stat_boxes_row(builder: ContentBuilder, container, stat_boxes) ->
             )
 
 
-class _HomeSectionStyleAlternator:
-    def __init__(self) -> None:
-        self._index = 0
-
-    def next(self) -> str:
-        container_type = MUTED_SECTION if self._index % 2 == 0 else LIGHT_SECTION
-        self._index += 1
-        return container_type
-
-
-def _emit_home_stats(
-    builder: ContentBuilder,
-    parent,
-    stats_section,
-    section_styles: _HomeSectionStyleAlternator,
-) -> None:
+def _emit_home_stats(builder: ContentBuilder, parent, stats_section) -> None:
     inner = stats_section.select_one('div.inner') or stats_section
-    container = builder.add_section(parent, section_styles.next())
+    container = builder.add_section(parent, ACCENT_SECTION)
     major = inner.select_one('div.major')
     minor = inner.select_one('div.minor')
     if major:
@@ -554,7 +539,7 @@ def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> Non
         builder.add_text_in_container(
             parent,
             _prepare_html(hero.decode_contents().strip()),
-            container_type=GRID_CONTAINER_TYPE_SECTION,
+            container_type=ACCENT_SECTION,
             tag_type='section',
         )
         return
@@ -572,7 +557,7 @@ def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> Non
         builder.add_text_in_container(
             parent,
             combined,
-            container_type=GRID_CONTAINER_TYPE_SECTION,
+            container_type=ACCENT_SECTION,
             tag_type='section',
         )
 
@@ -581,11 +566,12 @@ def _emit_home_shaded_card_section(
     builder: ContentBuilder,
     parent,
     section,
-    section_styles: _HomeSectionStyleAlternator,
+    *,
+    container_type: str,
 ) -> None:
     inner = section.select_one('div.inner') or section
     grid = _home_items_grid(section)
-    container = builder.add_section(parent, section_styles.next())
+    container = builder.add_section(parent, container_type)
     preamble = _home_section_inner_preamble(inner, grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -614,11 +600,12 @@ def _emit_home_highlights_section(
     builder: ContentBuilder,
     parent,
     highlights,
-    section_styles: _HomeSectionStyleAlternator,
+    *,
+    container_type: str,
 ) -> None:
     inner = highlights.select_one('div.inner') or highlights
     highlights_grid = highlights.select_one('div.news-highlights')
-    container = builder.add_section(parent, section_styles.next())
+    container = builder.add_section(parent, container_type)
     preamble = _home_section_inner_preamble(inner, highlights_grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -642,46 +629,63 @@ def _emit_home_happenings_section(
     builder: ContentBuilder,
     parent,
     happenings,
-    section_styles: _HomeSectionStyleAlternator,
+    *,
+    container_type: str,
 ) -> None:
     builder.add_text_in_container(
         parent,
         _prepare_html(happenings.decode_contents().strip()),
-        container_type=section_styles.next(),
+        container_type=container_type,
     )
 
 
-def _emit_home_content_inner_sections(
-    builder: ContentBuilder,
-    parent,
-    soup: BeautifulSoup,
-    section_styles: _HomeSectionStyleAlternator,
-) -> None:
+def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
     """``section.content > div.inner`` blocks in scrape document order."""
     content_inner = soup.select_one('section.content > div.inner')
     if not content_inner:
         return
     for section in content_inner.find_all('section', recursive=False):
         classes = _home_section_class_str(section)
-        if 'projects-highlights' in classes:
-            _emit_home_highlights_section(builder, parent, section, section_styles)
+        if 'opportunities' in classes:
+            _emit_home_shaded_card_section(
+                builder,
+                parent,
+                section,
+                container_type=LIGHT_SECTION,
+            )
+        elif 'projects-highlights' in classes:
+            _emit_home_highlights_section(
+                builder,
+                parent,
+                section,
+                container_type=LIGHT_SECTION,
+            )
+        elif 'news' in classes:
+            _emit_home_shaded_card_section(
+                builder,
+                parent,
+                section,
+                container_type=MUTED_SECTION,
+            )
         elif 'happenings' in classes:
-            _emit_home_happenings_section(builder, parent, section, section_styles)
-        elif 'shaded' in classes and ('opportunities' in classes or 'news' in classes):
-            _emit_home_shaded_card_section(builder, parent, section, section_styles)
+            _emit_home_happenings_section(
+                builder,
+                parent,
+                section,
+                container_type=LIGHT_SECTION,
+            )
 
 
 def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
     soup = BeautifulSoup(html, 'lxml')
-    section_styles = _HomeSectionStyleAlternator()
 
     _emit_home_hero(builder, parent, soup)
 
     stats = soup.select_one('section.stats')
     if stats:
-        _emit_home_stats(builder, parent, stats, section_styles)
+        _emit_home_stats(builder, parent, stats)
 
-    _emit_home_content_inner_sections(builder, parent, soup, section_styles)
+    _emit_home_content_inner_sections(builder, parent, soup)
 
 
 def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
