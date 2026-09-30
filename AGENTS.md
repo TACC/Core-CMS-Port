@@ -1,6 +1,9 @@
 # AGENTS.md
 
 - [Architecture](#architecture)
+  - [Layout](#layout)
+  - [Workflow](#workflow)
+  - [Services](#services)
 - [Vocab](#vocab)
 - [Commits](#commits)
 - [Pull Requests](#pull-requests)
@@ -22,10 +25,6 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 [Core-CMS-Template]: https://github.com/TACC/Core-CMS-Template
 
-### Services
-
-Follow [Core-CMS "Services"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#services).
-
 ### Workflow
 
 Scrape third-party pages, then import into django CMS.
@@ -36,6 +35,10 @@ Scrape third-party pages, then import into django CMS.
 | `cms/src/apps/cms_port/common/` | Shared port helpers |
 | `cms/scraped/<site>/` | Scraped artifacts on the host |
 | `cms/docs/port-<site>.md` | Per-site runbook (e.g. [`port-nairr.md`](cms/docs/port-nairr.md)) |
+
+### Services
+
+Follow [Core-CMS "Services"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#services).
 
 ## Vocab
 
