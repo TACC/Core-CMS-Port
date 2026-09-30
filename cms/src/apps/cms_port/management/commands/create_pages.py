@@ -17,6 +17,8 @@ from cms.models import Page
 
 from apps.cms_port.site_loader import load_site
 
+GENERATED_CONTAINER_SLUG = 'generated'
+
 
 class Command(BaseCommand):
     help = 'Create CMS pages from scraped HTML (see PORTAL_SCRAPE_SITE / --site).'
@@ -69,11 +71,22 @@ class Command(BaseCommand):
             specs = page_registry.expand_specs_with_ancestors([spec])
 
         page_by_slug = {}
+        generated_container = None
+        if not options['dry_run']:
+            generated_container = self._ensure_generated_container(
+                page_registry,
+                page_by_slug,
+                language,
+                publisher,
+                options['no_publish'],
+            )
 
         for spec in specs:
             reverse_id = page_registry.reverse_id_for_slug(spec.slug)
             slug_part = spec.slug.split('/')[-1] if spec.slug else ''
-            parent = self._resolve_parent(spec, page_by_slug, page_registry)
+            parent = self._resolve_parent(
+                spec, page_by_slug, page_registry, generated_container
+            )
 
             if options['dry_run']:
                 self.stdout.write(
@@ -134,19 +147,67 @@ class Command(BaseCommand):
         if not options['dry_run']:
             self.stdout.write(f'Scrape root: {scrape_root}')
 
-    def _resolve_parent(self, spec, page_by_slug, page_registry):
-        if not spec.parent_slug:
-            return None
-        if spec.parent_slug in page_by_slug:
-            return page_by_slug[spec.parent_slug]
-        reverse_id = page_registry.reverse_id_for_slug(spec.parent_slug)
+    def _is_home_spec(self, spec):
+        return spec.pattern == 'home'
+
+    def _find_page_by_reverse_id(self, reverse_id):
         page = Page.objects.drafts().filter(reverse_id=reverse_id).first()
         if not page:
             page = Page.objects.filter(reverse_id=reverse_id).first()
+        return page
+
+    def _get_generated_container(self, page_by_slug, page_registry):
+        if GENERATED_CONTAINER_SLUG in page_by_slug:
+            return page_by_slug[GENERATED_CONTAINER_SLUG]
+        reverse_id = page_registry.reverse_id_for_slug(GENERATED_CONTAINER_SLUG)
+        page = self._find_page_by_reverse_id(reverse_id)
         if page:
-            page_by_slug[spec.parent_slug] = page
-            return page
-        return None
+            page_by_slug[GENERATED_CONTAINER_SLUG] = page
+        return page
+
+    def _ensure_generated_container(
+        self, page_registry, page_by_slug, language, publisher, no_publish
+    ):
+        existing = self._get_generated_container(page_by_slug, page_registry)
+        if existing:
+            self.stdout.write(f'Using existing draft for {GENERATED_CONTAINER_SLUG}')
+            return existing
+
+        reverse_id = page_registry.reverse_id_for_slug(GENERATED_CONTAINER_SLUG)
+        page = create_page(
+            title='Generated',
+            template='standard.html',
+            language=language,
+            slug=GENERATED_CONTAINER_SLUG,
+            parent=None,
+            reverse_id=reverse_id,
+            created_by=publisher,
+            in_navigation=False,
+            published=False,
+        )
+        self.stdout.write(self.style.SUCCESS(f'Created {GENERATED_CONTAINER_SLUG}'))
+        page_by_slug[GENERATED_CONTAINER_SLUG] = page
+        if not no_publish:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', UserWarning)
+                page = publish_page(page, publisher, language)
+        return page
+
+    def _resolve_parent(self, spec, page_by_slug, page_registry, generated_container=None):
+        if spec.parent_slug:
+            if spec.parent_slug in page_by_slug:
+                return page_by_slug[spec.parent_slug]
+            reverse_id = page_registry.reverse_id_for_slug(spec.parent_slug)
+            page = self._find_page_by_reverse_id(reverse_id)
+            if page:
+                page_by_slug[spec.parent_slug] = page
+                return page
+            return None
+        if self._is_home_spec(spec):
+            return None
+        if generated_container is not None:
+            return generated_container
+        return self._get_generated_container(page_by_slug, page_registry)
 
     def _delete_drafts(self, reverse_id):
         removed = 0
