@@ -11,6 +11,10 @@ from apps.cms_port.common.content_builder import (
     MUTED_SECTION,
     STYLE_CLASS_NAME_SECTION,
 )
+from apps.cms_port.common.card_tile_html import (
+    prepare_card_tile_html,
+    prepare_card_tile_html_from_element,
+)
 from apps.cms_port.common.html_text import (
     collapse_whitespace,
     prepare_article_html_chunk,
@@ -129,12 +133,12 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
             for column_div in column_divs:
                 col = builder.add_column(row, xs_col=12, lg_col=lg_col)
                 for team in column_div.select('div.team'):
-                    inner = _prepare_html(team.decode_contents().strip())
+                    inner = _prepare_html(prepare_card_tile_html_from_element(team))
                     if inner:
                         builder.add_card_plain_text(col, inner)
         else:
             for team in teams.select('div.team'):
-                inner = _prepare_html(team.decode_contents().strip())
+                inner = _prepare_html(prepare_card_tile_html_from_element(team))
                 if inner:
                     builder.add_card_plain_text(section, inner)
     else:
@@ -328,14 +332,6 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         builder.add_text(body_col, '\n'.join(details_blocks))
 
 
-def _tile_html_from_element(element) -> str:
-    return element.decode_contents().strip()
-
-
-# Joomla tile wrappers with no Core-CMS/Core-Styles equivalent (see AGENTS.md).
-_JOOMLA_CARD_WRAPPER_CLASSES = ('content', 'with-controls', 'more-buttons')
-
-
 def _extract_more_button_cta(root) -> dict | None:
     """Pull ``div.more-buttons`` / ``a.more-btn`` into a Bootstrap4 Link (btn) plugin."""
     link = root.select_one('div.more-buttons a[href], a.more-btn[href]')
@@ -352,20 +348,13 @@ def _extract_more_button_cta(root) -> dict | None:
     return cta
 
 
-def _strip_joomla_card_wrappers(root) -> None:
-    for class_name in _JOOMLA_CARD_WRAPPER_CLASSES:
-        for node in root.select(f'div.{class_name}'):
-            node.unwrap()
-
-
 def _prepare_opportunity_tile_html(tile) -> tuple[str | None, dict | None]:
     soup = BeautifulSoup(f'<div data-nairr-tile>{tile.decode_contents()}</div>', 'lxml')
     root = soup.select_one('div[data-nairr-tile]')
     if not root:
         return None, None
     cta = _extract_more_button_cta(root)
-    _strip_joomla_card_wrappers(root)
-    body = _prepare_html(root.decode_contents().strip())
+    body = _prepare_html(prepare_card_tile_html(root.decode_contents().strip()))
     if not body or len(BeautifulSoup(body, 'lxml').get_text(strip=True)) < 5:
         return None, cta
     return body, cta
@@ -388,11 +377,6 @@ def _emit_home_opportunity_card(builder: ContentBuilder, col, tile) -> None:
 def _is_home_opportunities_section(section) -> bool:
     classes = section.get('class') or []
     return 'opportunities' in classes
-
-
-def _is_home_news_section(section) -> bool:
-    classes = section.get('class') or []
-    return 'news' in classes
 
 
 def _home_stat_box_body_and_cta(stat_box) -> tuple[str | None, dict | None]:
@@ -593,20 +577,6 @@ def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, g
         )
 
 
-def _wrap_bare_content_links(tile) -> str:
-    """Wrap bare ``div.content > a`` in ``<p>`` to match sibling news tiles."""
-    soup = BeautifulSoup(f'<div data-nairr-tile>{tile.decode_contents()}</div>', 'lxml')
-    root = soup.select_one('div[data-nairr-tile]')
-    if not root:
-        return tile.decode_contents().strip()
-    content = root.select_one('div.content')
-    if content:
-        for child in list(content.children):
-            if getattr(child, 'name', None) == 'a':
-                child.wrap(soup.new_tag('p'))
-    return root.decode_contents().strip()
-
-
 def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
     hero = soup.select_one('div.real-hero')
     if hero:
@@ -657,10 +627,7 @@ def _emit_home_shaded_card_section(
             if opportunities:
                 _emit_home_opportunity_card(builder, col, item)
                 continue
-            if _is_home_news_section(section):
-                inner_html = _wrap_bare_content_links(item)
-            else:
-                inner_html = _tile_html_from_element(item)
+            inner_html = prepare_card_tile_html_from_element(item)
             if not inner_html or len(BeautifulSoup(inner_html, 'lxml').get_text(strip=True)) < 5:
                 continue
             builder.add_card_standard_text(col, _prepare_html(inner_html))
@@ -695,7 +662,7 @@ def _emit_home_highlights_section(
     if highlights_grid:
         row = builder.add_row(container)
         for link in highlights_grid.select('a'):
-            tile_html = link.decode_contents().strip()
+            tile_html = prepare_card_tile_html(link.decode_contents().strip())
             if not tile_html:
                 continue
             href = link.get('href', '')
@@ -795,7 +762,10 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
             row = builder.add_row(container)
             for link in grid.select('a.no-underline'):
                 col = builder.add_column(row, xs_col=12)
-                builder.add_card_plain_text(col, link.decode_contents().strip())
+                builder.add_card_plain_text(
+                    col,
+                    _prepare_html(prepare_card_tile_html(link.decode_contents().strip())),
+                )
 
 
 def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_selector: str, html: str) -> None:
@@ -806,7 +776,7 @@ def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_
     container = builder.add_section(parent)
     row = builder.add_row(container)
     for item in section.select('div.items-grid > div, div.split > div'):
-        inner = _tile_html_from_element(item)
+        inner = prepare_card_tile_html_from_element(item)
         if inner:
             col = builder.add_column(row, xs_col=12)
-            builder.add_card_standard_text(col, inner)
+            builder.add_card_standard_text(col, _prepare_html(inner))
