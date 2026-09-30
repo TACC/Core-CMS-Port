@@ -31,11 +31,6 @@ CARD_SKIN_STANDARD = 'c-card--standard'
 CARD_SKIN_STAT = NAIRR_CARD_SKIN_STAT
 
 
-def is_section_grid_container_type(container_type: str) -> bool:
-    """True when ``container_type`` is a Section (or Container+Section) grid choice."""
-    return container_type not in ROOT_GRID_CONTAINER_TYPES
-
-
 class PlaceholderRootTextError(ValueError):
     """Text plugin attached directly to a page Content placeholder."""
 
@@ -59,8 +54,7 @@ class ContentBuilder:
         self.enforce_placeholder_root_grid = enforce_placeholder_root_grid
         self._content_root_container = None
 
-    def content_parent(self, parent, *, root_container_type: str = 'container'):
-        """Parent for placeholder-level import: the single root grid Container under Content."""
+    def _content_parent(self, parent, *, root_container_type: str = 'container'):
         if parent is not None:
             return parent
         return self._ensure_content_root(root_container_type)
@@ -110,7 +104,7 @@ class ContentBuilder:
         """Add a section grid container (and root Container when needed), then Text inside it."""
         if not html or not str(html).strip():
             return None
-        container = self.add_section_container(
+        container = self.add_container_in_root(
             parent,
             container_type,
             tag_type=tag_type,
@@ -128,11 +122,22 @@ class ContentBuilder:
             tag_type=tag_type,
         )
 
-    def add_container(self, parent, container_type=MUTED_SECTION, tag_type='div'):
-        if parent is None and self.enforce_placeholder_root_grid:
+    def add_container(
+        self,
+        parent,
+        container_type=MUTED_SECTION,
+        tag_type='div',
+        *,
+        allow_root: bool = False,
+    ):
+        if (
+            parent is None
+            and self.enforce_placeholder_root_grid
+            and not allow_root
+        ):
             raise PlaceholderRootGridContainerError(
-                'add_container requires a parent under the Content placeholder; '
-                'use content_parent(), add_section_container(), or add_text_in_container().'
+                'Grid container at Content placeholder root is not allowed; '
+                'use add_container_in_root() or nest under a container, column, or card.'
             )
         return add_plugin(
             self.placeholder,
@@ -143,6 +148,18 @@ class ContentBuilder:
             tag_type=tag_type,
         )
 
+    def add_container_in_root(
+        self,
+        parent,
+        container_type=MUTED_SECTION,
+        tag_type='div',
+        *,
+        root_container_type: str = 'container',
+    ):
+        """Add a grid container under the page's single root Container, then return it."""
+        parent = self._content_parent(parent, root_container_type=root_container_type)
+        return self.add_container(parent, container_type, tag_type)
+
     def add_section_container(
         self,
         parent,
@@ -151,9 +168,13 @@ class ContentBuilder:
         *,
         root_container_type: str = 'container',
     ):
-        """Section-type grid container nested under the page's single root Container."""
-        parent = self.content_parent(parent, root_container_type=root_container_type)
-        return self.add_container(parent, container_type, tag_type)
+        """Alias for :meth:`add_container_in_root` (section-style grid containers)."""
+        return self.add_container_in_root(
+            parent,
+            container_type,
+            tag_type=tag_type,
+            root_container_type=root_container_type,
+        )
 
     def add_row(self, parent):
         return add_plugin(
