@@ -601,7 +601,10 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
     if highlights:
         inner = highlights.select_one('div.inner') or highlights
         highlights_grid = highlights.select_one('div.news-highlights')
-        container = builder.add_container(parent, container_type='container')
+        container = builder.add_container(
+            builder.content_parent(parent),
+            container_type='container',
+        )
         preamble = _home_section_inner_preamble(inner, highlights_grid)
         if preamble:
             builder.add_text(container, preamble)

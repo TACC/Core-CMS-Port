@@ -57,6 +57,28 @@ class ContentBuilder:
         self.language = language
         self.enforce_placeholder_root_text = enforce_placeholder_root_text
         self.enforce_placeholder_root_grid = enforce_placeholder_root_grid
+        self._content_root_container = None
+
+    def content_parent(self, parent, *, root_container_type: str = 'container'):
+        """Parent for placeholder-level import: the single root grid Container under Content."""
+        if parent is not None:
+            return parent
+        return self._ensure_content_root(root_container_type)
+
+    def _ensure_content_root(self, root_container_type: str = 'container'):
+        if self._content_root_container is not None:
+            return self._content_root_container
+        if root_container_type not in ROOT_GRID_CONTAINER_TYPES:
+            root_container_type = 'container'
+        self._content_root_container = add_plugin(
+            self.placeholder,
+            Bootstrap4GridContainerPlugin,
+            self.language,
+            target=None,
+            container_type=root_container_type,
+            tag_type='div',
+        )
+        return self._content_root_container
 
     def add_text(self, parent, html: str, *, allow_root: bool = False):
         if (
@@ -107,15 +129,10 @@ class ContentBuilder:
         )
 
     def add_container(self, parent, container_type=MUTED_SECTION, tag_type='div'):
-        if (
-            parent is None
-            and self.enforce_placeholder_root_grid
-            and is_section_grid_container_type(container_type)
-        ):
+        if parent is None and self.enforce_placeholder_root_grid:
             raise PlaceholderRootGridContainerError(
-                'Section grid containers must be nested under a root Container, '
-                'Fluid container, or None on the Content placeholder; '
-                'use add_section_container().'
+                'add_container requires a parent under the Content placeholder; '
+                'use content_parent(), add_section_container(), or add_text_in_container().'
             )
         return add_plugin(
             self.placeholder,
@@ -134,9 +151,8 @@ class ContentBuilder:
         *,
         root_container_type: str = 'container',
     ):
-        """Section-type grid container; adds a root Container first when ``parent`` is the placeholder."""
-        if parent is None:
-            parent = self.add_container(parent, root_container_type)
+        """Section-type grid container nested under the page's single root Container."""
+        parent = self.content_parent(parent, root_container_type=root_container_type)
         return self.add_container(parent, container_type, tag_type)
 
     def add_row(self, parent):
