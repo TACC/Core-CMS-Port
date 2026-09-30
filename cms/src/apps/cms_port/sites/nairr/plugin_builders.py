@@ -425,9 +425,8 @@ def _emit_home_stat_boxes_row(builder: ContentBuilder, container, stat_boxes) ->
             )
 
 
-def _emit_home_stats(builder: ContentBuilder, parent, stats_section) -> None:
+def _emit_home_stats(builder: ContentBuilder, container, stats_section) -> None:
     inner = stats_section.select_one('div.inner') or stats_section
-    container = builder.add_section(parent, ACCENT_SECTION)
     major = inner.select_one('div.major')
     minor = inner.select_one('div.minor')
     if major:
@@ -577,33 +576,30 @@ def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, g
         )
 
 
-def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
+def _emit_home_accent_intro_and_stats(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
+    """One accent section for hero/about copy and stats (avoid adjacent duplicate section styles)."""
     hero = soup.select_one('div.real-hero')
-    if hero:
-        builder.add_text_in_container(
-            parent,
-            _prepare_html(hero.decode_contents().strip()),
-            container_type=ACCENT_SECTION,
-            tag_type='section',
-        )
-        return
     parts: list[str] = []
-    h1 = soup.find('h1')
-    if h1:
-        parts.append(str(h1))
-        h1.decompose()
-    about = soup.select_one('section.about')
-    if about:
-        parts.append(about.decode_contents().strip())
-        about.decompose()
-    combined = _prepare_html('\n'.join(parts).strip())
-    if combined:
-        builder.add_text_in_container(
-            parent,
-            combined,
-            container_type=ACCENT_SECTION,
-            tag_type='section',
-        )
+    if hero:
+        parts.append(hero.decode_contents().strip())
+    else:
+        h1 = soup.find('h1')
+        if h1:
+            parts.append(str(h1))
+            h1.decompose()
+        about = soup.select_one('section.about')
+        if about:
+            parts.append(about.decode_contents().strip())
+            about.decompose()
+    intro = _prepare_html('\n'.join(parts).strip())
+    stats = soup.select_one('section.stats')
+    if not intro and not stats:
+        return
+    container = builder.add_section(parent, ACCENT_SECTION, tag_type='section')
+    if intro:
+        builder.add_text(container, intro)
+    if stats:
+        _emit_home_stats(builder, container, stats)
 
 
 def _emit_home_shaded_card_section(
@@ -733,7 +729,7 @@ def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: Bea
                 builder,
                 parent,
                 section,
-                container_type=LIGHT_SECTION,
+                container_type=MUTED_SECTION,
             )
         elif 'projects-highlights' in classes:
             _emit_home_highlights_section(
@@ -761,11 +757,7 @@ def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: Bea
 def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
     soup = BeautifulSoup(html, 'lxml')
 
-    _emit_home_hero(builder, parent, soup)
-
-    stats = soup.select_one('section.stats')
-    if stats:
-        _emit_home_stats(builder, parent, stats)
+    _emit_home_accent_intro_and_stats(builder, parent, soup)
 
     _emit_home_content_inner_sections(builder, parent, soup)
 
