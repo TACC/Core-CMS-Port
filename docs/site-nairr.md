@@ -7,8 +7,10 @@ Port of NAIRR Pilot (Joomla at [nairrpilot.org](https://nairrpilot.org)) into Co
 
 ## Static Assets
 
-- `static/nairr/css/annotation.css`
-- `static/nairr/js/faq-accordion.js`
+Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
+
+- `css/annotation.css`
+- `js/faq-accordion.js`
 
 > [!IMPORTANT]
 > **TODO:** Move these to [Core-CMS-Custom](https://github.com/TACC/Core-CMS-Custom).

@@ -26,16 +26,15 @@
 5. <sub>(conditional) If you use `static/<site_id>/`</sub>
     1. Add `apps.py` (Django `AppConfig`)
     2. In `custom_app_settings.py`, in `CUSTOM_APPS`, register `apps.cms_port.sites.<site_id>`.
-6. In `settings_custom` —
+6. Set `PORTAL_SCRAPE_SITE` and an entry under `PORTAL_SCRAPE` (`ROOT`, `BASE_URL`, `CRAWL_DELAY`):
 
-    - local: [`settings_custom.py`](../cms/src/taccsite_cms/settings/settings_custom.py)
-    - remote: [TACC/Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments): `<project>/camino/cms.settings_custom.py`
+    - local: [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py)
+    - remote: [Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments) `<project>/camino/cms.settings_custom.py` (see NAIRR in [#225](https://github.com/TACC/Core-Portal-Deployments/pull/225/files))
 
-    — set the following:
+7. Mount scrape storage so container `ROOT` matches disk:
 
-    - `PORTAL_SCRAPE_SITE` to the `<site_id>` for the current project
-7. In [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_custom.py),
-    - add an entry under `PORTAL_SCRAPE`
+    - local: [`docker-compose.dev.yml`](../cms/docker-compose.dev.yml) maps `./scraped` → `/code/scraped`; write under `cms/scraped/<site_id>/`
+    - remote: that project's `camino/docker-compose.*.override.yml` — host path (any name) → `/code/scraped/<site_id>` (NAIRR: `${CAMINO_HOME}/data/nairr-scrape` → `/code/scraped/nairr`)
 
 ## Document the Port
 
