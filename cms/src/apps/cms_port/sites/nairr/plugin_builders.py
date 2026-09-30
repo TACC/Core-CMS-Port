@@ -616,10 +616,15 @@ def _emit_home_highlights_section(
             if not tile_html:
                 continue
             href = link.get('href', '')
-            if href and href not in tile_html:
-                tile_html = f'<a href="{href}">{tile_html}</a>'
+            if not href:
+                continue
             col = builder.add_column(row, xs_col=12)
-            builder.add_card_image_top_text(col, _prepare_html(tile_html))
+            builder.add_linked_card_image_top_text(
+                col,
+                _prepare_html(tile_html),
+                href,
+                link_target=link.get('target', ''),
+            )
     footer = _home_section_inner_footer(inner, highlights_grid)
     if footer:
         builder.add_text(container, footer)
