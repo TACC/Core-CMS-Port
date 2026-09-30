@@ -21,7 +21,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 | --- | --- |
 | `cms/` | Core-CMS instance, Docker Compose, Makefile, port custom code |
 | `cms/src/apps/cms_port/` | Shared port tooling and per-site packages (scrape/import) |
-| `cms/docs/` | Port-specific documentation |
+| `docs/` | Port repo docs (`create-project.md`, per-site `site-<id>.md`) |
 | `README.md` | Repo-level overview and links to [Core-CMS-Template] docs |
 
 [Core-CMS-Template]: https://github.com/TACC/Core-CMS-Template
@@ -38,7 +38,7 @@ Scrape third-party pages, then import into django CMS.
 | `cms/src/apps/cms_port/sites/<site>/` | Site-specific scrape/import code |
 | `cms/src/apps/cms_port/common/` | Shared port helpers |
 | `cms/scraped/<site>/` | Scraped artifacts on the host |
-| `cms/docs/port-<site>.md` | Per-site runbook (e.g. [`port-nairr.md`](cms/docs/port-nairr.md)) |
+| `docs/site-<site>.md` | Per-site intro and custom-code summary (e.g. [`site-nairr.md`](docs/site-nairr.md)) |
 
 #### Scrape / Import Scope
 
