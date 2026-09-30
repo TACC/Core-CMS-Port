@@ -26,13 +26,16 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 Follow [Core-CMS "Services"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#services).
 
-### Port workflow
+### Workflow
 
-NAIRR Joomla port (scrape/import): see `cms/docs/port-nairr.md`.
+Scrape third-party pages, then import into django CMS.
 
-- Site-specific code: `cms/src/apps/cms_port/sites/<site>/`
-- Shared helpers: `cms/src/apps/cms_port/common/`
-- Scraped artifacts on the host: `cms/scraped/<site>/`
+| Path | Purpose |
+| --- | --- |
+| `cms/src/apps/cms_port/sites/<site>/` | Site-specific scrape/import code |
+| `cms/src/apps/cms_port/common/` | Shared port helpers |
+| `cms/scraped/<site>/` | Scraped artifacts on the host |
+| `cms/docs/port-<site>.md` | Per-site runbook (e.g. [`port-nairr.md`](cms/docs/port-nairr.md)) |
 
 ## Vocab
 
