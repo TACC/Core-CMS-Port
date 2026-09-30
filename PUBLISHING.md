@@ -37,12 +37,12 @@ In [Core Portal Deployments]:
 
 1. In `….env` files, set `CMS_IMAGE=taccwma/core-cms-port` and `CMS_TAG` to a commit-ish.
 2. In `cms.settings_custom.py`, add settings as you would for a Core-CMS project.
-3. In `….override.yml‎`, mount a host directory for the scrape e.g.\
+3. In `….override.yml`, mount a host directory for the scrape e.g.\
     `- ${CAMINO_HOME}/data/nairr-scrape:/code/scraped/nairr:rw`
 
 Examples:
-    - [TACC/Core-Portal-Deployments#206](https://github.com/TACC/Core-Portal-Deployments/pull/206/changes)
-    - [TACC/Core-Portal-Deployments#225](https://github.com/TACC/Core-Portal-Deployments/pull/225/changes)
+- [TACC/Core-Portal-Deployments#206](https://github.com/TACC/Core-Portal-Deployments/pull/206/changes)
+- [TACC/Core-Portal-Deployments#225](https://github.com/TACC/Core-Portal-Deployments/pull/225/changes)
 
 ## Multi-Site
 
