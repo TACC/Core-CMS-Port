@@ -1,5 +1,5 @@
 """
-NAIRR page tree for create_nairr_pages / scrape_nairr_pages.
+NAIRR page tree for ``create_pages`` / ``scrape_pages --site nairr``.
 
 scrape_path: path on nairrpilot.org (no leading slash).
 pattern: import layout — see NAIRR CMS Clone plan.
@@ -212,7 +212,7 @@ PAGE_SPECS = [
 
 
 def scrape_targets():
-    """Unique scrape paths for scrape_nairr_pages --all."""
+    """Unique scrape paths for ``scrape_pages --site nairr --all``."""
     seen = set()
     for spec in PAGE_SPECS:
         if spec.pattern in ('section_parent', 'home'):

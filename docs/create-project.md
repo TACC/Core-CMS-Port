@@ -17,23 +17,21 @@
     fetch HTML, extract content, read/write scrape files (read `PORTAL_SCRAPE` via `portal_scrape_entry` in `site_loader.py`, as NAIRR does)
   - `import_pages.py` — 
     scraped HTML → django CMS plugins
-  - `apps.py` — 
-    Django `AppConfig` (for step 5)
 4. <sup>(optional)</sup>\
-    Evaluate whether you need the following:
-  - `management/commands/` 
-    aliases (e.g. `scrape_<site_id>_pages` instead of `scrape_pages --site <site_id>`)
-  - `static/<site_id>/` 
-    temporary location for site-specific CSS/JS
-  - `plugin_builders.py`  
-    site-specific layout helpers
-5. <sup>(conditional) If you need `management/commands/` or `static/<site_id>/`</sup>\
-    In `cms/src/taccsite_cms/custom_app_settings.py`, to `CUSTOM_APPS`, add `apps.cms_port.sites.<site_id>`.
+    Add when your port needs them:
+  - `plugin_builders.py` — 
+    site-specific layout helpers (NAIRR uses this from `import_pages.py`)
+  - `static/<site_id>/` — 
+    CSS/JS in the image until you move assets to [Core-CMS-Custom](https://github.com/TACC/Core-CMS-Custom) or another CDN
+5. <sup>(conditional) If you use `static/<site_id>/`</sup>\
+    Add `apps.py` (Django `AppConfig`) and register `apps.cms_port.sites.<site_id>` in `CUSTOM_APPS` in `cms/src/taccsite_cms/custom_app_settings.py` (keep `apps.cms_port`).
 6. Set `PORTAL_SCRAPE_SITE` to the site you are working on in [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py) (local) or that project's `cms.settings_custom.py` (Camino).
 7. Add an entry under `PORTAL_SCRAPE` in the same settings file (`ROOT`, `BASE_URL`, `CRAWL_DELAY`).\
     <sup>(examples: [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py), NAIRR Camino [`cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/687bf09bd0f22977fbf2ebc2279bed2b0885e7d6/nairr-oc/camino/cms.settings_custom.py#L113-L129).)</sup>
 8. Scrape files live under `cms/scraped/<site_id>/` on the host ([`docker-compose.dev.yml`](../cms/docker-compose.dev.yml) mounts `./scraped` → `/code/scraped`).\
    On Camino, add a host mount to `/code/scraped/<site_id>` in that project's compose override when you need the pipeline on server (see [nairr-oc overrides](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/docker-compose.dev.override.yml)).
+
+Scrape and import always use `scrape_pages` and `create_pages` with `--site <site_id>` (no per-site management command aliases).
 
 ## Document the Port
 
