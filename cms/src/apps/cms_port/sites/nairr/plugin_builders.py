@@ -683,24 +683,16 @@ def _emit_home_highlights_section(
             builder.add_text(container, footer)
 
 
-# Home ``section.happenings`` partner lists (nairrpilot.org ``.partners-list``).
-_HOME_PARTNERS_CARD_ATTRIBUTES = {
-    'style': (
-        'background: rgb(237, 241, 247); '
-        'padding: 2rem; margin: 0 0 2rem; border-radius: 0.5rem;'
-    ),
-}
-_HOME_PARTNERS_LIST_INLINE_STYLE = 'columns: 3; column-fill: balance; margin: 0; padding: 0;'
+# ``o-columns`` = CSS multicol (not Bootstrap grid ``.col-*``); ``p-5`` = Card padding utility.
+_COLUMNS_PATTERN_CLASS = 'o-columns'
+_PARTNER_LIST_CARD_ADDITIONAL_CLASSES = f'p-5 {_COLUMNS_PATTERN_CLASS}'
 
 
 def _home_partners_list_html(ul) -> str:
     items = []
     for li in ul.find_all('li', recursive=False):
         items.append(f'<li>{li.decode_contents().strip()}</li>')
-    return (
-        f'<ul class="partners-list" style="{_HOME_PARTNERS_LIST_INLINE_STYLE}">'
-        f'{"".join(items)}</ul>'
-    )
+    return f'<ul>{"".join(items)}</ul>'
 
 
 def _emit_home_happenings_section(
@@ -721,7 +713,7 @@ def _emit_home_happenings_section(
             builder.add_card_plain_text(
                 container,
                 list_html,
-                attributes=_HOME_PARTNERS_CARD_ATTRIBUTES,
+                additional_classes=_PARTNER_LIST_CARD_ADDITIONAL_CLASSES,
             )
             continue
         chunk = _prepare_html(str(child))

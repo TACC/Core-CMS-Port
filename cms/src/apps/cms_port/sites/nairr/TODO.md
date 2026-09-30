@@ -45,9 +45,9 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 - [ ] footer [^6]
 
 [^1]: `PORTAL_STYLES` loads `core-styles.cms.v3-bridge-for-v2-users.css`
-      (https://github.com/TACC/Core-Styles/pull/683). Roster marks use
-      `.annotation` (also `.u-annotation`; `nairr/css/annotation.css`); import
-      rewrites Bootstrap `.lead` → `.annotation`.
+      (https://github.com/TACC/Core-Styles/pull/683). Pattern CSS under
+      `static/nairr/css/` (e.g. `annotation.css`, `o-columns.css`) is listed in
+      `settings_default.py`. Import rewrites Bootstrap `.lead` → `.annotation`.
 [^2]: Style `<details>`/`<summary>` accordion instances (FAQ narrow-screen stacking works structurally, but needs visual styling — there's an existing class name for this that we couldn't recall; find/confirm it before hand-rolling new CSS).
 [^3]: Style the "Copy the URL" button (`button.nairr-faq-copy-url`).
 [^4]: Review recurring page structure/patterns across pages once more are imported, to spot shared edge cases before writing more `SECTION_OVERRIDES`.

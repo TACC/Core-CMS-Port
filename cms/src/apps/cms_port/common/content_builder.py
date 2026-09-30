@@ -257,6 +257,7 @@ class ContentBuilder:
         layout: str = 'default',
         tag_type: str = 'article',
         attributes: dict | None = None,
+        additional_classes: str = '',
     ):
         """TACC Site **Card** plugin (``TaccsiteCardPlugin``), not generic Style."""
         kwargs = {
@@ -264,6 +265,8 @@ class ContentBuilder:
             'template': layout,
             'tag_type': tag_type,
         }
+        if additional_classes:
+            kwargs['additional_classes'] = additional_classes
         if attributes:
             kwargs['attributes'] = attributes
         return add_plugin(
@@ -279,8 +282,20 @@ class ContentBuilder:
         self.add_text(card, html)
         return card
 
-    def add_card_plain_text(self, parent, html: str, *, attributes: dict | None = None):
-        card = self.add_card(parent, skin=CARD_SKIN_PLAIN, attributes=attributes)
+    def add_card_plain_text(
+        self,
+        parent,
+        html: str,
+        *,
+        attributes: dict | None = None,
+        additional_classes: str = '',
+    ):
+        card = self.add_card(
+            parent,
+            skin=CARD_SKIN_PLAIN,
+            attributes=attributes,
+            additional_classes=additional_classes,
+        )
         self.add_text(card, html)
         return card
 
