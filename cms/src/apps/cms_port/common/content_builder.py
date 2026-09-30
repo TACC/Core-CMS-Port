@@ -16,16 +16,22 @@ from djangocms_text_ckeditor.cms_plugins import TextPlugin
 
 from apps.cms_port.sites.nairr.card_skins import NAIRR_CARD_SKIN_STAT
 
-MUTED_SECTION = 'container  o-section o-section--style-muted'
-# DJANGOCMS_BOOTSTRAP4_GRID_CONTAINERS (admin label “Section”)
+# taccsite_cms ``DJANGOCMS_BOOTSTRAP4_GRID_CONTAINERS``: bare Section + “Section only” group.
+SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
+    'o-section',
+    'o-section o-section--style-light',
+    'o-section o-section--style-muted',
+    'o-section o-section--style-accent',
+    'o-section o-section--style-dark',
+})
+
+MUTED_SECTION = 'o-section o-section--style-muted'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
 # DJANGOCMS_STYLE_CHOICES
 STYLE_CLASS_NAME_SECTION = 'section'
 
 # Bootstrap4 grid Container plugin types allowed on the Content placeholder root.
 ROOT_GRID_CONTAINER_TYPES = frozenset({'container', 'container-fluid', ''})
-# Bootstrap4 admin "Container + Section" without a style; use Section (…) types instead.
-CONTAINER_PLUS_SECTION_GRID_TYPE = 'container  o-section'
 
 # Taccsite Card plugin skins (``class_name`` / editor label “Card style”)
 CARD_SKIN_PLAIN = 'c-card--plain'
@@ -86,11 +92,7 @@ class ContentBuilder:
     def _validate_section_grid_under_page_root(self, parent, container_type: str) -> None:
         if not self._is_direct_child_of_page_root(parent):
             return
-        if (
-            container_type in ROOT_GRID_CONTAINER_TYPES
-            or container_type == CONTAINER_PLUS_SECTION_GRID_TYPE
-            or 'o-section' not in container_type
-        ):
+        if container_type not in SECTION_ONLY_GRID_CONTAINER_TYPES:
             raise PlaceholderRootGridContainerError(
                 'Only Section (…) grid containers are allowed inside the page root Container; '
                 'use add_section().'
