@@ -26,19 +26,18 @@
 5. <sub>(conditional) If you use `static/<site_id>/`</sub>
     1. Add `apps.py` (Django `AppConfig`)
     2. In `custom_app_settings.py`, in `CUSTOM_APPS`, register `apps.cms_port.sites.<site_id>`.
-6. Set `PORTAL_SCRAPE_SITE` and an entry under `PORTAL_SCRAPE` (`ROOT`, `BASE_URL`, `CRAWL_DELAY`):
-
-    - local: [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py)
-    - remote: [Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments) `<project>/camino/cms.settings_custom.py` (see NAIRR in [#225](https://github.com/TACC/Core-Portal-Deployments/pull/225/files))
-
-7. Mount scrape storage so container `ROOT` matches disk:
-
-    - local: [`docker-compose.dev.yml`](../cms/docker-compose.dev.yml) maps `./scraped` → `/code/scraped`; write under `cms/scraped/<site_id>/`
-    - remote: that project's `camino/docker-compose.*.override.yml` — host path (any name) → `/code/scraped/<site_id>` (NAIRR: `${CAMINO_HOME}/data/nairr-scrape` → `/code/scraped/nairr`)
+6. In `settings_custom` —
+    - local: [`settings_custom.py`](../cms/src/taccsite_cms/settings/settings_custom.py)
+    - remote: [TACC/Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments): `<project>/camino/cms.settings_custom.py`
+    — set the following:
+    - `PORTAL_SCRAPE_SITE` to the `<site_id>` for the current project
+    - `PORTAL_STYLES` to load suggested and site-specific styles
+7. In [`settings_default.py`](../cms/src/taccsite_cms/settings/settings_default.py),
+    - add an entry under `PORTAL_SCRAPE`
 
 ## Document the Port
 
-1. Add `docs/site-<site_id>.md` (intro and summary of that site's custom code).
+1. Add `docs/site-<site_id>.md` (intro, `settings_custom.py` values for `PORTAL_SCRAPE_SITE` and `PORTAL_STYLES`, and summary of that site's custom code).
 2. Link to it from [README](../README.md) under **Projects**.
 
 ## Scrape & Import

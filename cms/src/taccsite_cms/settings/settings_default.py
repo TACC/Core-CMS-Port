@@ -18,7 +18,8 @@ import os
 
 from taccsite_cms.settings.settings import BASE_DIR
 
-PORTAL_SCRAPE_SITE = 'nairr'
+# Set `PORTAL_SCRAPE_SITE` in `settings_custom.py`
+# PORTAL_SCRAPE_SITE = '...'
 
 PORTAL_SCRAPE = {
     'nairr': {
@@ -28,22 +29,9 @@ PORTAL_SCRAPE = {
     },
 }
 
-_PORTAL_CORE_STYLES_BRIDGE = {
-    'is_remote': True,
-    'path': (
-        'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7'
-        '/dist/core-styles.cms.v3-bridge-for-v2-users.css'
-    ),
-}
+# Set `PORTAL_STYLES` in `settings_custom.py`
+# PORTAL_STYLES = [{
+#     'is_remote': True,
+#     'path': 'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7/dist/core-styles.cms.v3-bridge-for-v2-users.css',
+# }]
 
-PORTAL_SCRAPE_STYLES = {
-    'nairr': [
-        _PORTAL_CORE_STYLES_BRIDGE,
-        {
-            'is_remote': False,
-            'path': 'nairr/css/annotation.css',
-        },
-    ],
-}
-
-PORTAL_STYLES = PORTAL_SCRAPE_STYLES.get(PORTAL_SCRAPE_SITE, [_PORTAL_CORE_STYLES_BRIDGE])
