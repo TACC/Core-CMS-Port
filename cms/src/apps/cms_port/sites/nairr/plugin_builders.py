@@ -77,9 +77,9 @@ def _emit_leading_h1(builder: ContentBuilder, parent, soup: BeautifulSoup) -> No
     if not markup:
         h1.decompose()
         return
-    container = builder.add_container(
+    container = builder.add_section_container(
         parent,
-        container_type=GRID_CONTAINER_TYPE_SECTION,
+        GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
     )
     builder.add_text(container, _prepare_html(markup))
@@ -171,9 +171,9 @@ def add_article_text_plugins(
             continue
         leading_tag = _chunk_leading_tag(chunk)
         if leading_tag == 'h1':
-            container = builder.add_container(
+            container = builder.add_section_container(
                 parent,
-                container_type=GRID_CONTAINER_TYPE_SECTION,
+                GRID_CONTAINER_TYPE_SECTION,
                 tag_type='section',
             )
             builder.add_text(container, chunk)
@@ -345,7 +345,7 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
         builder.add_text_in_container(parent, stats.decode_contents().strip())
 
     for section in soup.select('section.section.shaded.pilot.opportunities, section.section.shaded.news.pilot'):
-        container = builder.add_container(parent)
+        container = builder.add_section_container(parent)
         row = builder.add_row(container)
         for item in section.select('div.split.items-grid > div, div.items-grid > div'):
             inner = _tile_html_from_element(item)
@@ -383,7 +383,7 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
     for subsection in pane.select('div.subsection'):
         step_title = subsection.find('h2')
         title_html = step_title.decode_contents().strip() if step_title else 'Step'
-        container = builder.add_container(parent, container_type='container  o-section')
+        container = builder.add_section_container(parent, 'container  o-section')
         builder.add_text(container, f'<h2>{title_html}</h2>')
         for grid in subsection.select('div.hz-grid'):
             row = builder.add_row(container)
@@ -397,7 +397,7 @@ def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_
     section = soup.select_one(section_selector)
     if not section:
         return
-    container = builder.add_container(parent)
+    container = builder.add_section_container(parent)
     row = builder.add_row(container)
     for item in section.select('div.items-grid > div, div.split > div'):
         inner = _tile_html_from_element(item)
