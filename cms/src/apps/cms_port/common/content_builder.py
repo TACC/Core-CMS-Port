@@ -39,6 +39,8 @@ ROOT_GRID_CONTAINER_TYPES = frozenset({'container', 'container-fluid', ''})
 CARD_SKIN_PLAIN = 'c-card--plain'
 CARD_SKIN_STANDARD = 'c-card--standard'
 CARD_SKIN_STAT = NAIRR_CARD_SKIN_STAT
+# Default skin for import helpers unless a tile explicitly needs Standard or Statistic.
+CARD_SKIN_DEFAULT = CARD_SKIN_PLAIN
 
 # Card layout modifiers (``TaccsiteCardPlugin`` template keys → Core-Styles classes).
 _CARD_LAYOUT_CLASS = {
@@ -254,16 +256,22 @@ class ContentBuilder:
         skin: str,
         layout: str = 'default',
         tag_type: str = 'article',
+        attributes: dict | None = None,
     ):
         """TACC Site **Card** plugin (``TaccsiteCardPlugin``), not generic Style."""
+        kwargs = {
+            'class_name': skin,
+            'template': layout,
+            'tag_type': tag_type,
+        }
+        if attributes:
+            kwargs['attributes'] = attributes
         return add_plugin(
             self.placeholder,
             'TaccsiteCardPlugin',
             self.language,
             target=parent,
-            class_name=skin,
-            template=layout,
-            tag_type=tag_type,
+            **kwargs,
         )
 
     def add_card_standard_text(self, parent, html: str):
@@ -271,13 +279,13 @@ class ContentBuilder:
         self.add_text(card, html)
         return card
 
-    def add_card_plain_text(self, parent, html: str):
-        card = self.add_card(parent, skin=CARD_SKIN_PLAIN)
+    def add_card_plain_text(self, parent, html: str, *, attributes: dict | None = None):
+        card = self.add_card(parent, skin=CARD_SKIN_PLAIN, attributes=attributes)
         self.add_text(card, html)
         return card
 
     def add_card_image_top_text(self, parent, html: str):
-        card = self.add_card(parent, skin=CARD_SKIN_STANDARD, layout='image_top')
+        card = self.add_card(parent, skin=CARD_SKIN_DEFAULT, layout='image_top')
         self.add_text(card, html)
         return card
 
@@ -322,7 +330,7 @@ class ContentBuilder:
     ):
         card_link = self.add_card_link(
             parent,
-            skin=CARD_SKIN_STANDARD,
+            skin=CARD_SKIN_DEFAULT,
             url=url,
             layout='image_top',
             link_target=link_target,

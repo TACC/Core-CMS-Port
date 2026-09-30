@@ -220,7 +220,7 @@ def build_sidebar_article(
         add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
     if banner_html:
         side_col = builder.add_column(row, xs_col=12, lg_col=4)
-        builder.add_card_standard_text(side_col, banner_html)
+        builder.add_card_plain_text(side_col, banner_html)
 
 
 def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
@@ -274,7 +274,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         body_html, cta = _extract_banner_cta(banner_html)
         banner_row = builder.add_row(wrapper)
         banner_col = builder.add_column(banner_row, xs_col=12)
-        card = builder.add_card_standard_text(banner_col, body_html)
+        card = builder.add_card_plain_text(banner_col, body_html)
         if cta and cta['url']:
             builder.add_button_link(card, name=cta['name'], url=cta['url'], link_target=cta['target'])
 
@@ -364,7 +364,7 @@ def _emit_home_opportunity_card(builder: ContentBuilder, col, tile) -> None:
     body, cta = _prepare_opportunity_tile_html(tile)
     if not body:
         return
-    card = builder.add_card_standard_text(col, body)
+    card = builder.add_card_plain_text(col, body)
     if cta and cta['url']:
         builder.add_button_link(
             card,
@@ -630,7 +630,7 @@ def _emit_home_shaded_card_section(
             inner_html = prepare_card_tile_html_from_element(item)
             if not inner_html or len(BeautifulSoup(inner_html, 'lxml').get_text(strip=True)) < 5:
                 continue
-            builder.add_card_standard_text(col, _prepare_html(inner_html))
+            builder.add_card_plain_text(col, _prepare_html(inner_html))
     if _home_section_marketing_buttons(inner, grid):
         _emit_home_marketing_button_row(builder, container, inner, grid)
     else:
@@ -683,6 +683,26 @@ def _emit_home_highlights_section(
             builder.add_text(container, footer)
 
 
+# Home ``section.happenings`` partner lists (nairrpilot.org ``.partners-list``).
+_HOME_PARTNERS_CARD_ATTRIBUTES = {
+    'style': (
+        'background: rgb(237, 241, 247); '
+        'padding: 2rem; margin: 0 0 2rem; border-radius: 0.5rem;'
+    ),
+}
+_HOME_PARTNERS_LIST_INLINE_STYLE = 'columns: 3; column-fill: balance; margin: 0; padding: 0;'
+
+
+def _home_partners_list_html(ul) -> str:
+    items = []
+    for li in ul.find_all('li', recursive=False):
+        items.append(f'<li>{li.decode_contents().strip()}</li>')
+    return (
+        f'<ul class="partners-list" style="{_HOME_PARTNERS_LIST_INLINE_STYLE}">'
+        f'{"".join(items)}</ul>'
+    )
+
+
 def _emit_home_happenings_section(
     builder: ContentBuilder,
     parent,
@@ -690,11 +710,23 @@ def _emit_home_happenings_section(
     *,
     container_type: str,
 ) -> None:
-    builder.add_text_in_container(
-        parent,
-        _prepare_html(happenings.decode_contents().strip()),
-        container_type=container_type,
-    )
+    inner = happenings.select_one('div.inner') or happenings
+    container = builder.add_section(parent, container_type)
+    for child in inner.children:
+        if not getattr(child, 'name', None):
+            continue
+        classes = child.get('class') or []
+        if child.name == 'ul' and 'partners-list' in classes:
+            list_html = _prepare_html(_home_partners_list_html(child))
+            builder.add_card_plain_text(
+                container,
+                list_html,
+                attributes=_HOME_PARTNERS_CARD_ATTRIBUTES,
+            )
+            continue
+        chunk = _prepare_html(str(child))
+        if chunk:
+            builder.add_text(container, chunk)
 
 
 def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
@@ -779,4 +811,4 @@ def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_
         inner = prepare_card_tile_html_from_element(item)
         if inner:
             col = builder.add_column(row, xs_col=12)
-            builder.add_card_standard_text(col, _prepare_html(inner))
+            builder.add_card_plain_text(col, _prepare_html(inner))
