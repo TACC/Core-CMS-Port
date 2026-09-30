@@ -356,7 +356,10 @@ def build_home_from_scrape(builder: ContentBuilder, parent, html: str) -> None:
 
     highlights = soup.select_one('section.section.projects-highlights')
     if highlights:
-        container = builder.add_container(parent, container_type='container')
+        container = builder.add_container(
+            builder.content_parent(parent),
+            container_type='container',
+        )
         row = builder.add_row(container)
         for link in highlights.select('div.news-highlights a'):
             tile_html = link.decode_contents().strip()
