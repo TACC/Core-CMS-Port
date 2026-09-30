@@ -22,6 +22,24 @@ def _prepare_html(html: str) -> str:
     return rewrite_lead_to_annotation(prepare_article_html_chunk(html))
 
 
+def _wrap_roster_lists_in_o_columns(html: str) -> str:
+    """Wrap member ``ul`` lists for multicol layout (``o-columns.css``)."""
+    html = html.strip()
+    if not html or '<ul' not in html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-roster>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-roster]')
+    if not root:
+        return html
+    for ul in root.find_all('ul'):
+        parent = ul.parent
+        if parent and parent.name == 'div' and 'o-columns' in (parent.get('class') or []):
+            continue
+        wrapper = soup.new_tag('div', attrs={'class': 'o-columns'})
+        ul.wrap(wrapper)
+    return root.decode_contents().strip()
+
+
 def extract_announcement_banners(html: str) -> list[str]:
     soup = BeautifulSoup(html, 'lxml')
     banners = []
@@ -128,12 +146,16 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
             for column_div in column_divs:
                 col = builder.add_column(row, xs_col=12, lg_col=lg_col)
                 for team in column_div.select('div.team'):
-                    inner = _prepare_html(team.decode_contents().strip())
+                    inner = _wrap_roster_lists_in_o_columns(
+                        _prepare_html(team.decode_contents().strip())
+                    )
                     if inner:
                         builder.add_card_plain_text(col, inner)
         else:
             for team in teams.select('div.team'):
-                inner = _prepare_html(team.decode_contents().strip())
+                inner = _wrap_roster_lists_in_o_columns(
+                    _prepare_html(team.decode_contents().strip())
+                )
                 if inner:
                     builder.add_card_plain_text(section, inner)
     else:
