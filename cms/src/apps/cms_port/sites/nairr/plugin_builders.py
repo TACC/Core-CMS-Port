@@ -390,6 +390,11 @@ def _is_home_opportunities_section(section) -> bool:
     return 'opportunities' in classes
 
 
+def _is_home_news_section(section) -> bool:
+    classes = section.get('class') or []
+    return 'news' in classes
+
+
 def _home_stat_box_body_and_cta(stat_box) -> tuple[str | None, dict | None]:
     stat = stat_box.select_one('.stat')
     label = stat_box.select_one('.label')
@@ -533,6 +538,20 @@ def _home_section_inner_footer(inner, grid) -> str | None:
     return footer or None
 
 
+def _wrap_bare_content_links(tile) -> str:
+    """Wrap bare ``div.content > a`` in ``<p>`` to match sibling news tiles."""
+    soup = BeautifulSoup(f'<div data-nairr-tile>{tile.decode_contents()}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-tile]')
+    if not root:
+        return tile.decode_contents().strip()
+    content = root.select_one('div.content')
+    if content:
+        for child in list(content.children):
+            if getattr(child, 'name', None) == 'a':
+                child.wrap(soup.new_tag('p'))
+    return root.decode_contents().strip()
+
+
 def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
     hero = soup.select_one('div.real-hero')
     if hero:
@@ -583,7 +602,10 @@ def _emit_home_shaded_card_section(
             if opportunities:
                 _emit_home_opportunity_card(builder, col, item)
                 continue
-            inner_html = _tile_html_from_element(item)
+            if _is_home_news_section(section):
+                inner_html = _wrap_bare_content_links(item)
+            else:
+                inner_html = _tile_html_from_element(item)
             if not inner_html or len(BeautifulSoup(inner_html, 'lxml').get_text(strip=True)) < 5:
                 continue
             builder.add_card_standard_text(col, _prepare_html(inner_html))
