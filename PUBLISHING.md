@@ -3,7 +3,7 @@
 Build, push, and deploy the shared `taccwma/core-cms-port` image. To add a site to the repo first, read [Create Project](./docs/create-project.md).
 
 - [Docker Image](#docker-image)
-- [Build & Push](#build-push)
+- [Build & Push](#build--push)
 - [Deploy](#deploy)
 - [Multi-Site](#multi-site)
 - [Graduate to Core-CMS](#graduate-to-core-cms)
@@ -14,32 +14,43 @@ Build, push, and deploy the shared `taccwma/core-cms-port` image. To add a site 
 
 ## Build & Push
 
-| path | what |
-| - | - |
-| GitHub Actions | Push to `main` or run **Build** (`workflow_dispatch`). Tags: `<short-sha>`, `<branch>`, `latest`. |
-| Local | From `cms/`: `make build-full`, `make publish` (optional `make publish-latest`). Requires `docker login` to Docker Hub. |
+### GitHub Actions
 
-Repo needs `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets (same pattern as [Texascale-CMS](https://github.com/TACC/Texascale-CMS) / [APCD-CMS](https://github.com/TACC/APCD-CMS)).
+Push to `main` or run **Build** (`workflow_dispatch`). (Tags: `<short-sha>`, `<branch>`, `latest`.)
 
-Pin the `FROM` line in `cms/Dockerfile` to a Core-CMS release tag when you cut deploys — do not rely on `:latest` in production.
+_Repo needs `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets, like [other Core-CMS-Template projects](https://github.com/topics/tacc-core-cms-template)._
+
+### Local
+
+Prerequisites:
+- `cd cms`
+- `docker login`
+
+Steps:
+1. `make build-full`
+2. `make publish` (optional `make publish-latest`).
 
 ## Deploy
 
-> [!TIP]
-> Example: [nairr-oc/camino](https://github.com/TACC/Core-Portal-Deployments/tree/main/nairr-oc/camino).
 
 In [Core Portal Deployments]:
 
-1. Set `CMS_IMAGE=taccwma/core-cms-port` and `CMS_TAG` to a commit tag (not only `latest` on prod).
-2. Keep that project's `cms.settings_custom.py` and Camino overrides (logos, scrape mounts, `PORTAL_SCRAPE_SITE`, `PORTAL_SCRAPE`, etc.).
+1. In `….env` files, set `CMS_IMAGE=taccwma/core-cms-port` and `CMS_TAG` to a commit-ish.
+2. In `cms.settings_custom.py`, add settings as you would for a Core-CMS project.
+3. In `….override.yml‎`, mount a host directory for the scrape e.g.\
+    `- ${CAMINO_HOME}/data/nairr-scrape:/code/scraped/nairr:rw`
+
+Examples:
+    - [TACC/Core-Portal-Deployments#206](https://github.com/TACC/Core-Portal-Deployments/pull/206/changes)
+    - [TACC/Core-Portal-Deployments#225](https://github.com/TACC/Core-Portal-Deployments/pull/225/changes)
 
 ## Multi-Site
 
-Other site packages in the image do not affect a deployment unless they are in `CUSTOM_APPS` and you run their import commands on that environment.
+**No conflicts.** Other sites supported by this repo/image can **not** affect each other unless you **both** add them to `CUSTOM_APPS` **and** run their import commands on that environment.
 
 ## Graduate to Core-CMS
 
-No port-specific migrations. Imported pages are normal django CMS content. Keep the database.
+**Database unaffected.** No port-specific migrations. Imported pages are normal django CMS content.
 
 1. Move any CSS/JS from port `static/` to [Core-CMS-Custom].
 2. Update paths in live pages to reference the new static files.
@@ -47,7 +58,7 @@ No port-specific migrations. Imported pages are normal django CMS content. Keep 
 4. (optional) Delete the scrape volume and `PORTAL_SCRAPE` / `PORTAL_SCRAPE_SITE` settings.
 5. (optional) Delete the host scrape directory.
 
-You do not need to SSH in to clean the database. Removing the scrape mount is enough on the deploy side.
+_You do **not** need to SSH in to clean up cruft. Removing the scrape mount is enough on the deploy side._
 
 <!-- Link Aliases -->
 
