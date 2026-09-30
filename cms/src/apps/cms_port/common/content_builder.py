@@ -26,6 +26,7 @@ SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
 })
 
 MUTED_SECTION = 'o-section o-section--style-muted'
+LIGHT_SECTION = 'o-section o-section--style-light'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
 # DJANGOCMS_STYLE_CHOICES
 STYLE_CLASS_NAME_SECTION = 'section'
