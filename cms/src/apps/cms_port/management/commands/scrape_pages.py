@@ -46,9 +46,10 @@ class Command(BaseCommand):
         scrape_lib = site.scrape_lib
         page_registry = site.page_registry
 
+        scrape_settings = portal_scrape_entry(site_id)
         root = scrape_lib.scrape_root(settings)
         base = scrape_lib.base_url(settings)
-        delay = portal_scrape_entry(site_id)[2]
+        crawl_delay = scrape_settings.crawl_delay
         root.mkdir(parents=True, exist_ok=True)
 
         paths = []
@@ -74,7 +75,7 @@ class Command(BaseCommand):
                 root=root,
                 base=base,
                 force=options['force'],
-                crawl_delay=delay,
+                crawl_delay=crawl_delay,
             )
             self.stdout.write(self.style.SUCCESS(f'Wrote {path}'))
 

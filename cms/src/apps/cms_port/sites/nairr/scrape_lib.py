@@ -48,11 +48,11 @@ Joomla_PLACEHOLDER_RE = re.compile(
 
 
 def scrape_root(settings) -> Path:
-    return portal_scrape_entry(SITE_ID)[0]
+    return portal_scrape_entry(SITE_ID).root
 
 
 def base_url(settings) -> str:
-    url = portal_scrape_entry(SITE_ID)[1]
+    url = portal_scrape_entry(SITE_ID).base_url
     if url:
         return url
     return 'https://nairrpilot.org'
