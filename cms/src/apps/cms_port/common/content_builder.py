@@ -22,25 +22,41 @@ GRID_CONTAINER_TYPE_SECTION = 'o-section'
 # DJANGOCMS_STYLE_CHOICES
 STYLE_CLASS_NAME_SECTION = 'section'
 
+# Bootstrap4 grid Container plugin types allowed on the Content placeholder root.
+ROOT_GRID_CONTAINER_TYPES = frozenset({'container', 'container-fluid', ''})
+
 # Taccsite Card plugin skins (``class_name`` / editor label “Card style”)
 CARD_SKIN_PLAIN = 'c-card--plain'
 CARD_SKIN_STANDARD = 'c-card--standard'
 CARD_SKIN_STAT = NAIRR_CARD_SKIN_STAT
 
 
-class PlaceholderRootTextError(ValueError):
-    """Text plugin attached directly to a page Content placeholder."""
+def is_section_grid_container_type(container_type: str) -> bool:
+    """True when ``container_type`` is a Section (or Container+Section) grid choice."""
+    return container_type not in ROOT_GRID_CONTAINER_TYPES
 
 
 class PlaceholderRootTextError(ValueError):
     """Text plugin attached directly to a page Content placeholder."""
+
+
+class PlaceholderRootGridContainerError(ValueError):
+    """Invalid Bootstrap4 grid Container on the Content placeholder root."""
 
 
 class ContentBuilder:
-    def __init__(self, placeholder, language, *, enforce_placeholder_root_text: bool = True):
+    def __init__(
+        self,
+        placeholder,
+        language,
+        *,
+        enforce_placeholder_root_text: bool = True,
+        enforce_placeholder_root_grid: bool = True,
+    ):
         self.placeholder = placeholder
         self.language = language
         self.enforce_placeholder_root_text = enforce_placeholder_root_text
+        self.enforce_placeholder_root_grid = enforce_placeholder_root_grid
 
     def add_text(self, parent, html: str, *, allow_root: bool = False):
         if (
@@ -67,14 +83,16 @@ class ContentBuilder:
         *,
         container_type: str = MUTED_SECTION,
         tag_type: str = 'div',
+        root_container_type: str = 'container',
     ):
-        """Add a grid container (section) at ``parent``, then a Text plugin inside it."""
+        """Add a section grid container (and root Container when needed), then Text inside it."""
         if not html or not str(html).strip():
             return None
-        container = self.add_container(
+        container = self.add_section_container(
             parent,
-            container_type=container_type,
+            container_type,
             tag_type=tag_type,
+            root_container_type=root_container_type,
         )
         return self.add_text(container, html)
 
@@ -89,6 +107,16 @@ class ContentBuilder:
         )
 
     def add_container(self, parent, container_type=MUTED_SECTION, tag_type='div'):
+        if (
+            parent is None
+            and self.enforce_placeholder_root_grid
+            and is_section_grid_container_type(container_type)
+        ):
+            raise PlaceholderRootGridContainerError(
+                'Section grid containers must be nested under a root Container, '
+                'Fluid container, or None on the Content placeholder; '
+                'use add_section_container().'
+            )
         return add_plugin(
             self.placeholder,
             Bootstrap4GridContainerPlugin,
@@ -97,6 +125,19 @@ class ContentBuilder:
             container_type=container_type,
             tag_type=tag_type,
         )
+
+    def add_section_container(
+        self,
+        parent,
+        container_type=MUTED_SECTION,
+        tag_type='div',
+        *,
+        root_container_type: str = 'container',
+    ):
+        """Section-type grid container; adds a root Container first when ``parent`` is the placeholder."""
+        if parent is None:
+            parent = self.add_container(parent, root_container_type)
+        return self.add_container(parent, container_type, tag_type)
 
     def add_row(self, parent):
         return add_plugin(

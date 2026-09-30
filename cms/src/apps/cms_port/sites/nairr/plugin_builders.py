@@ -77,9 +77,9 @@ def _emit_leading_h1(builder: ContentBuilder, parent, soup: BeautifulSoup) -> No
     if not markup:
         h1.decompose()
         return
-    container = builder.add_container(
+    container = builder.add_section_container(
         parent,
-        container_type=GRID_CONTAINER_TYPE_SECTION,
+        GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
     )
     builder.add_text(container, _prepare_html(markup))
@@ -171,9 +171,9 @@ def add_article_text_plugins(
             continue
         leading_tag = _chunk_leading_tag(chunk)
         if leading_tag == 'h1':
-            container = builder.add_container(
+            container = builder.add_section_container(
                 parent,
-                container_type=GRID_CONTAINER_TYPE_SECTION,
+                GRID_CONTAINER_TYPE_SECTION,
                 tag_type='section',
             )
             builder.add_text(container, chunk)
@@ -437,7 +437,7 @@ def _emit_home_stat_boxes_row(builder: ContentBuilder, container, stat_boxes) ->
 
 def _emit_home_stats(builder: ContentBuilder, parent, stats_section) -> None:
     inner = stats_section.select_one('div.inner') or stats_section
-    container = builder.add_container(parent)
+    container = builder.add_section_container(parent)
     major = inner.select_one('div.major')
     minor = inner.select_one('div.minor')
     if major:
@@ -564,7 +564,7 @@ def _emit_home_hero(builder: ContentBuilder, parent, soup: BeautifulSoup) -> Non
 def _emit_home_shaded_card_section(builder: ContentBuilder, parent, section) -> None:
     inner = section.select_one('div.inner') or section
     grid = _home_items_grid(section)
-    container = builder.add_container(parent)
+    container = builder.add_section_container(parent)
     preamble = _home_section_inner_preamble(inner, grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -638,7 +638,7 @@ def build_getting_started(builder: ContentBuilder, parent, html: str) -> None:
     for subsection in pane.select('div.subsection'):
         step_title = subsection.find('h2')
         title_html = step_title.decode_contents().strip() if step_title else 'Step'
-        container = builder.add_container(parent, container_type='container  o-section')
+        container = builder.add_section_container(parent, 'container  o-section')
         builder.add_text(container, f'<h2>{title_html}</h2>')
         for grid in subsection.select('div.hz-grid'):
             row = builder.add_row(container)
@@ -652,7 +652,7 @@ def build_muted_card_grid_from_section(builder: ContentBuilder, parent, section_
     section = soup.select_one(section_selector)
     if not section:
         return
-    container = builder.add_container(parent)
+    container = builder.add_section_container(parent)
     row = builder.add_row(container)
     for item in section.select('div.items-grid > div, div.split > div'):
         inner = _tile_html_from_element(item)
