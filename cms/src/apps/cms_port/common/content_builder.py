@@ -104,7 +104,7 @@ class ContentBuilder:
         """Add a section grid container (and root Container when needed), then Text inside it."""
         if not html or not str(html).strip():
             return None
-        container = self.add_section(
+        container = self.add_container_in_root(
             parent,
             container_type,
             tag_type=tag_type,
