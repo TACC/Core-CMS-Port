@@ -14,19 +14,93 @@ from djangocms_snippet.models import Snippet
 from djangocms_style.cms_plugins import StylePlugin
 from djangocms_text_ckeditor.cms_plugins import TextPlugin
 
-MUTED_SECTION = 'container  o-section o-section--style-muted'
-# DJANGOCMS_BOOTSTRAP4_GRID_CONTAINERS (admin label “Section”)
+# taccsite_cms ``DJANGOCMS_BOOTSTRAP4_GRID_CONTAINERS``: bare Section + “Section only” group.
+SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
+    'o-section',
+    'o-section o-section--style-light',
+    'o-section o-section--style-muted',
+    'o-section o-section--style-accent',
+    'o-section o-section--style-dark',
+})
+
+MUTED_SECTION = 'o-section o-section--style-muted'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
 # DJANGOCMS_STYLE_CHOICES
 STYLE_CLASS_NAME_SECTION = 'section'
 
+# Bootstrap4 grid Container plugin types allowed on the Content placeholder root.
+ROOT_GRID_CONTAINER_TYPES = frozenset({'container', 'container-fluid', ''})
+
+
+class PlaceholderRootTextError(ValueError):
+    """Text plugin attached directly to a page Content placeholder."""
+
+
+class PlaceholderRootGridContainerError(ValueError):
+    """Invalid Bootstrap4 grid Container on the Content placeholder root."""
+
 
 class ContentBuilder:
-    def __init__(self, placeholder, language):
+    def __init__(
+        self,
+        placeholder,
+        language,
+        *,
+        enforce_placeholder_root_text: bool = True,
+        enforce_placeholder_root_grid: bool = True,
+    ):
         self.placeholder = placeholder
         self.language = language
+        self.enforce_placeholder_root_text = enforce_placeholder_root_text
+        self.enforce_placeholder_root_grid = enforce_placeholder_root_grid
+        self._content_root_container = None
 
-    def add_text(self, parent, html: str):
+    def _content_parent(self, parent, *, root_container_type: str = 'container'):
+        if parent is not None:
+            return parent
+        return self._ensure_content_root(root_container_type)
+
+    def _ensure_content_root(self, root_container_type: str = 'container'):
+        if self._content_root_container is not None:
+            return self._content_root_container
+        if root_container_type not in ROOT_GRID_CONTAINER_TYPES:
+            root_container_type = 'container'
+        self._content_root_container = add_plugin(
+            self.placeholder,
+            Bootstrap4GridContainerPlugin,
+            self.language,
+            target=None,
+            container_type=root_container_type,
+            tag_type='div',
+        )
+        return self._content_root_container
+
+    def _is_direct_child_of_page_root(self, parent) -> bool:
+        return (
+            self._content_root_container is not None
+            and parent is not None
+            and getattr(parent, 'pk', None) == self._content_root_container.pk
+        )
+
+    def _validate_section_grid_under_page_root(self, parent, container_type: str) -> None:
+        if not self._is_direct_child_of_page_root(parent):
+            return
+        if container_type not in SECTION_ONLY_GRID_CONTAINER_TYPES:
+            raise PlaceholderRootGridContainerError(
+                'Only Section (…) grid containers are allowed inside the page root Container; '
+                'use add_section().'
+            )
+
+    def add_text(self, parent, html: str, *, allow_root: bool = False):
+        if (
+            parent is None
+            and self.enforce_placeholder_root_text
+            and not allow_root
+        ):
+            raise PlaceholderRootTextError(
+                'Text at Content placeholder root is not allowed; '
+                'use add_text_in_container() or nest under a container, column, or card.'
+            )
         return add_plugin(
             self.placeholder,
             TextPlugin,
@@ -34,6 +108,26 @@ class ContentBuilder:
             target=parent,
             body=html,
         )
+
+    def add_text_in_container(
+        self,
+        parent,
+        html: str,
+        *,
+        container_type: str = MUTED_SECTION,
+        tag_type: str = 'div',
+        root_container_type: str = 'container',
+    ):
+        """Add a section grid container (and root Container when needed), then Text inside it."""
+        if not html or not str(html).strip():
+            return None
+        container = self.add_container_in_root(
+            parent,
+            container_type,
+            tag_type=tag_type,
+            root_container_type=root_container_type,
+        )
+        return self.add_text(container, html)
 
     def add_style(self, parent, class_name: str, tag_type='div'):
         return add_plugin(
@@ -45,7 +139,24 @@ class ContentBuilder:
             tag_type=tag_type,
         )
 
-    def add_container(self, parent, container_type=MUTED_SECTION, tag_type='div'):
+    def add_container(
+        self,
+        parent,
+        container_type=MUTED_SECTION,
+        tag_type='div',
+        *,
+        allow_root: bool = False,
+    ):
+        if (
+            parent is None
+            and self.enforce_placeholder_root_grid
+            and not allow_root
+        ):
+            raise PlaceholderRootGridContainerError(
+                'Grid container at Content placeholder root is not allowed; '
+                'use add_section(), add_container_in_root(), or nest under a container, column, or card.'
+            )
+        self._validate_section_grid_under_page_root(parent, container_type)
         return add_plugin(
             self.placeholder,
             Bootstrap4GridContainerPlugin,
@@ -53,6 +164,33 @@ class ContentBuilder:
             target=parent,
             container_type=container_type,
             tag_type=tag_type,
+        )
+
+    def add_container_in_root(
+        self,
+        parent,
+        container_type=MUTED_SECTION,
+        tag_type='div',
+        *,
+        root_container_type: str = 'container',
+    ):
+        """Add a Section (…) grid container under the page's single root Container."""
+        parent = self._content_parent(parent, root_container_type=root_container_type)
+        return self.add_container(parent, container_type, tag_type)
+
+    def add_section(
+        self,
+        parent,
+        container_type=MUTED_SECTION,
+        tag_type='div',
+        *,
+        root_container_type: str = 'container',
+    ):
+        return self.add_container_in_root(
+            parent,
+            container_type,
+            tag_type=tag_type,
+            root_container_type=root_container_type,
         )
 
     def add_row(self, parent):
