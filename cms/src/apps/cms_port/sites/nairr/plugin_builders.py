@@ -10,7 +10,6 @@ from apps.cms_port.common.content_builder import (
     GRID_CONTAINER_TYPE_SECTION,
     LIGHT_SECTION,
     MUTED_SECTION,
-    STYLE_CLASS_NAME_SECTION,
 )
 from apps.cms_port.common.card_tile_html import (
     prepare_card_tile_html,
@@ -129,7 +128,11 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
     if not root:
         return
     teams = root.select_one('div.teams')
-    section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
+    section = builder.add_section(
+        builder.nest_parent(parent),
+        GRID_CONTAINER_TYPE_SECTION,
+        tag_type='section',
+    )
     if teams:
         before_parts: list[str] = []
         for child in root.children:
@@ -177,7 +180,7 @@ def _h2_title(chunk: str) -> str:
 # Section-content overrides, keyed by (page_slug, <h2> heading text).
 # Audit/extend edge cases here instead of branching inside
 # add_article_text_plugins - anything not listed falls through to the
-# generic h1-container / h2-Style-section handling below.
+# generic h1/h2 Section grid handling below.
 SECTION_OVERRIDES = {
     ('about/overview', 'NAIRR Pilot Operations Teams'): _emit_overview_operations_teams,
 }
@@ -190,7 +193,7 @@ def add_article_text_plugins(
     *,
     page_slug: str | None = None,
 ) -> None:
-    """Text plugins in section/container wrappers; h1 container, h2+ in Style section."""
+    """Text plugins in Section grid wrappers under the page root Container."""
     if not html or not html.strip():
         return
     for chunk in split_html_for_cms_text_plugins(html):
@@ -210,7 +213,11 @@ def add_article_text_plugins(
             if override:
                 override(builder, parent, chunk)
                 continue
-            section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
+            section = builder.add_section(
+                builder.nest_parent(parent),
+                GRID_CONTAINER_TYPE_SECTION,
+                tag_type='section',
+            )
             builder.add_text(section, chunk)
         else:
             builder.add_text_in_container(parent, chunk)
@@ -286,7 +293,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
 
     # Scope wrapper: JS (faq-accordion.js) targets `.nairr-faq` so Expand/Collapse
     # All only affects this page's accordions.
-    wrapper = builder.add_style(parent, 'nairr-faq', tag_type='div')
+    wrapper = builder.add_style(builder.nest_parent(parent), 'nairr-faq', tag_type='div')
 
     banners = []
     for node in soup.select('div.announcement-banner'):
