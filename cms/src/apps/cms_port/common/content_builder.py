@@ -91,10 +91,6 @@ class ContentBuilder:
             return parent
         return self._ensure_content_root(root_container_type)
 
-    def nest_parent(self, parent, *, root_container_type: str = 'container'):
-        """Parent node for page-level plugins (ensures a root Container when ``parent`` is None)."""
-        return self._content_parent(parent, root_container_type=root_container_type)
-
     def _ensure_content_root(self, root_container_type: str = 'container'):
         if self._content_root_container is not None:
             return self._content_root_container
@@ -170,6 +166,8 @@ class ContentBuilder:
         return self.add_text(section, html)
 
     def add_style(self, parent, class_name: str, tag_type='div'):
+        if parent is None:
+            parent = self._content_parent(parent)
         return add_plugin(
             self.placeholder,
             StylePlugin,
@@ -215,6 +213,7 @@ class ContentBuilder:
         *,
         root_container_type: str = 'container',
         label: str = '',
+        additional_classes: str = '',
     ):
         """Add TACC Site Section plugin (``TaccsiteSectionPlugin``), not Bootstrap4 Container."""
         parent = self._content_parent(parent, root_container_type=root_container_type)
@@ -224,6 +223,8 @@ class ContentBuilder:
         }
         if label:
             kwargs['label'] = label
+        if additional_classes:
+            kwargs['additional_classes'] = additional_classes
         return add_plugin(
             self.placeholder,
             'TaccsiteSectionPlugin',
