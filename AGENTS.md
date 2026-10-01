@@ -51,9 +51,7 @@ Scrape third-party pages, then import into django CMS.
 
 Contributors often use a **git worktree** (e.g. under `~/.cursor/worktrees/...`) while **`core_cms` still bind-mounts a different checkout**—commonly `~/Code/TACC/Core-CMS-Port/cms/`—because Compose was started from that clone. Code edited in the worktree is **not** what the container runs until paths align.
 
-**Agents working in a worktree:**
-
-- Keep all agent edits in the **active workspace** only. When Docker must see those edits, realign **`core_cms`** from `<workspace>/cms` (see mount check above) — do **not** write the same changes into another checkout.
+Keep all edits in the **active workspace** only. When Docker must see those edits, realign **`core_cms`** from `<workspace>/cms` (see mount check above) — do **not** write the same changes into another checkout.
 
 #### Project-Specific
 
