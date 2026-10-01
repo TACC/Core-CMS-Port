@@ -44,6 +44,7 @@ Scrape third-party pages, then import into django CMS.
 
 - Do **not** add new page-scraping or import builder functions (e.g. new `build_*` helpers, registry patterns, or management-command behavior) unless the user explicitly asks.
 - Prefer extending existing `plugin_builders` / `page_registry` paths for the page at hand.
+- **`create_pages` Generated tree (all sites):** After import, every page under **Generated** is shown in navigation. Each **direct child** of **Generated** that has child pages but no content plugins redirects to its first child (folder-only section rows).
 
 #### Project-Specific
 
