@@ -29,6 +29,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 ### Workflows
 
 - [Scrape / Import Scope](#scrape--import-scope)
+- [Git Worktrees and Docker](#git-worktrees-and-docker)
 - [Project-Specific](#project-specific)
 
 Scrape third-party pages, then import into django CMS.
@@ -45,6 +46,12 @@ Scrape third-party pages, then import into django CMS.
 - Do **not** add new page-scraping or import builder functions (e.g. new `build_*` helpers, registry patterns, or management-command behavior) unless the user explicitly asks.
 - Prefer extending existing `plugin_builders` / `page_registry` paths for the page at hand.
 - **`create_pages` Generated tree (all sites):** After import, every page under **Generated** is shown in navigation. Each **direct child** of **Generated** that has child pages but no content plugins redirects to its first child (folder-only section rows).
+
+#### Git Worktrees and Docker
+
+Contributors often use a **git worktree** (e.g. under `~/.cursor/worktrees/...`) while **`core_cms` still bind-mounts a different checkout**—commonly `~/Code/TACC/Core-CMS-Port/cms/`—because Compose was started from that clone. Code edited in the worktree is **not** what the container runs until paths align.
+
+Keep all edits in the **active workspace** only. When Docker must see those edits, realign **`core_cms`** from `<workspace>/cms` (see mount check above) — do **not** write the same changes into another checkout.
 
 #### Project-Specific
 
@@ -66,6 +73,8 @@ When building **cards** from scraped Joomla HTML (`plugin_builders`):
 ### Services
 
 Follow [Core-CMS "Services"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#services).
+
+The Compose volume **`core_cms_settings_data`** persists `taccsite_cms/settings/settings.py`. After a **`taccwma/core-cms`** image update, an old `settings.py` in that volume can omit new `INSTALLED_APPS` entries until the volume is re-seeded from the image; `make stop` / `make start` alone does not refresh it.
 
 ## Vocab
 
