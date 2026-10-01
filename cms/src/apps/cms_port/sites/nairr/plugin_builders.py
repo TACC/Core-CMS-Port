@@ -100,10 +100,12 @@ def _emit_leading_h1(builder: ContentBuilder, parent, soup: BeautifulSoup):
     if not markup:
         h1.decompose()
         return None
+    label = _simplify_section_label(collapse_whitespace(h1.get_text()))
     container = builder.add_section(
         parent,
         GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
+        label=label,
     )
     builder.add_text(container, _prepare_html(markup))
     h1.decompose()
@@ -133,6 +135,7 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
         parent,
         GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
+        label=_section_label_from_chunk(chunk),
     )
     if teams:
         before_parts: list[str] = []
@@ -178,6 +181,46 @@ def _h2_title(chunk: str) -> str:
     return collapse_whitespace(h2.get_text()) if h2 else ''
 
 
+def _simplify_section_label(title: str) -> str:
+    """Short labels for Taccsite Section plugins in Structure mode."""
+    title = collapse_whitespace(title)
+    if not title:
+        return title
+    shortcuts = {
+        'Advancing US Innovation in Artificial Intelligence': 'Hero & stats',
+        'About NAIRR Pilot': 'About',
+        'Frequently Asked Questions': 'FAQ',
+        'How to Acknowledge NAIRR': 'Acknowledge NAIRR',
+        'Leadership, Partners, and Contributors': 'Partners & contributors',
+        'NAIRR Pilot Operations Teams': 'Operations teams',
+    }
+    if title in shortcuts:
+        return shortcuts[title]
+    if title.startswith('NAIRR Pilot '):
+        return title[len('NAIRR Pilot ') :]
+    return title
+
+
+def _section_label_from_chunk(chunk: str) -> str:
+    h2 = _h2_title(chunk)
+    if h2:
+        return _simplify_section_label(h2)
+    soup = BeautifulSoup(f'<div data-nairr-label>{chunk}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-label]')
+    h1 = root.find('h1') if root else None
+    if h1:
+        return _simplify_section_label(collapse_whitespace(h1.get_text()))
+    return ''
+
+
+def _home_section_label(section) -> str:
+    inner = section.select_one('div.inner') or section
+    h2 = inner.find('h2')
+    if not h2:
+        return ''
+    return _simplify_section_label(collapse_whitespace(h2.get_text()))
+
+
 # Section-content overrides, keyed by (page_slug, <h2> heading text).
 # Audit/extend edge cases here instead of branching inside
 # add_article_text_plugins - anything not listed falls through to the
@@ -207,6 +250,7 @@ def add_article_text_plugins(
             parent,
             GRID_CONTAINER_TYPE_SECTION,
             tag_type='section',
+            label=_section_label_from_chunk(pending_h1),
         )
         builder.add_text(section, pending_h1)
         pending_h1 = None
@@ -231,6 +275,7 @@ def add_article_text_plugins(
                 parent,
                 GRID_CONTAINER_TYPE_SECTION,
                 tag_type='section',
+                label=_section_label_from_chunk(chunk),
             )
             body_parts = []
             if pending_h1:
@@ -324,6 +369,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
             parent,
             GRID_CONTAINER_TYPE_SECTION,
             tag_type='section',
+            label='Announcements',
         )
 
     for banner_html in dedupe_banners(banners):
@@ -340,6 +386,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
         GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
         additional_classes='nairr-faq',
+        label='Categories',
     )
 
     expand_text, collapse_text = _extract_accordion_controls(soup)
@@ -659,7 +706,16 @@ def _emit_home_accent_intro_and_stats(builder: ContentBuilder, parent, soup: Bea
     stats = soup.select_one('section.stats')
     if not intro and not stats:
         return
-    container = builder.add_section(parent, ACCENT_SECTION, tag_type='section')
+    label = 'Hero & stats'
+    h1 = soup.find('h1')
+    if h1:
+        label = _simplify_section_label(collapse_whitespace(h1.get_text()))
+    container = builder.add_section(
+        parent,
+        ACCENT_SECTION,
+        tag_type='section',
+        label=label,
+    )
     if intro:
         builder.add_text(container, intro)
     if stats:
@@ -675,7 +731,11 @@ def _emit_home_shaded_card_section(
 ) -> None:
     inner = section.select_one('div.inner') or section
     grid = _home_items_grid(section)
-    container = builder.add_section(parent, container_type)
+    container = builder.add_section(
+        parent,
+        container_type,
+        label=_home_section_label(section),
+    )
     preamble = _home_section_inner_preamble(inner, grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -715,7 +775,11 @@ def _emit_home_highlights_section(
     highlights_grid = highlights.select_one('div.news-highlights')
     # Preamble/footer use a direct child of ``div.inner`` (the wrap), not the nested grid.
     section_grid = highlights_wrap or highlights_grid
-    container = builder.add_section(parent, container_type)
+    container = builder.add_section(
+        parent,
+        container_type,
+        label=_home_section_label(highlights),
+    )
     preamble = _home_section_inner_preamble(inner, section_grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -763,7 +827,11 @@ def _emit_home_happenings_section(
     container_type: str,
 ) -> None:
     inner = happenings.select_one('div.inner') or happenings
-    container = builder.add_section(parent, container_type)
+    container = builder.add_section(
+        parent,
+        container_type,
+        label=_home_section_label(happenings),
+    )
     for child in inner.children:
         if not getattr(child, 'name', None):
             continue
