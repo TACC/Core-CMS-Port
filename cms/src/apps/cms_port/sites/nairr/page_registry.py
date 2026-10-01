@@ -20,6 +20,8 @@ class PageSpec:
     pattern: str
     parent_slug: Optional[str] = None
     in_navigation: bool = True
+    tested: bool = False
+    menu_title: Optional[str] = None
 
 
 SECTION_PARENTS = {
@@ -37,11 +39,30 @@ def reverse_id_for_slug(slug: str) -> str:
 
 
 # Order: parents before children where parent_slug is set.
+# Among siblings in the CMS menu, order matches first occurrence in this list
+# (applied after ``create_pages`` import).
 PAGE_SPECS = [
-    PageSpec('', 'NAIRR Pilot', 'fullwidth.html', '', 'home', in_navigation=True),
+    PageSpec(
+        '',
+        'NAIRR Pilot',
+        'fullwidth.html',
+        '',
+        'home',
+        in_navigation=True,
+        tested=True,
+        menu_title='Home',
+    ),
     PageSpec('getting-started', 'Get Started', 'standard.html', 'getting-started', 'getting_started'),
     PageSpec('about', 'About', 'standard.html', '', 'section_parent'),
-    PageSpec('about/overview', 'Overview', 'standard.html', 'about/overview', 'article', parent_slug='about'),
+    PageSpec(
+        'about/overview',
+        'Overview',
+        'standard.html',
+        'about/overview',
+        'article',
+        parent_slug='about',
+        tested=True,
+    ),
     PageSpec('about/secure', 'NAIRR Secure', 'standard.html', 'about/secure', 'article', parent_slug='about'),
     PageSpec('opportunities', 'Opportunities', 'standard.html', '', 'section_parent'),
     PageSpec(
@@ -183,7 +204,15 @@ PAGE_SPECS = [
         parent_slug='news',
     ),
     PageSpec('help', 'Learn/Get Help', 'standard.html', '', 'section_parent'),
-    PageSpec('help/faq', 'Frequently Asked Questions', 'standard.html', 'help/faq', 'faq', parent_slug='help'),
+    PageSpec(
+        'help/faq',
+        'Frequently Asked Questions',
+        'standard.html',
+        'help/faq',
+        'faq',
+        parent_slug='help',
+        tested=True,
+    ),
     PageSpec(
         'help/videos',
         'Videos Archive',
@@ -209,6 +238,32 @@ PAGE_SPECS = [
         parent_slug='help',
     ),
 ]
+
+
+TESTED_PAGE_SLUGS = tuple(spec.slug for spec in PAGE_SPECS if spec.tested)
+
+
+def first_child_spec(parent_slug: str) -> Optional[PageSpec]:
+    """First ``PAGE_SPECS`` entry with ``parent_slug`` (stable menu/redirect target)."""
+    for spec in PAGE_SPECS:
+        if spec.parent_slug == parent_slug:
+            return spec
+    return None
+
+
+def specs_for_tested() -> list[PageSpec]:
+    """Pages to import/remove for ``--tested`` (parents before children, de-duplicated)."""
+    ordered: list[PageSpec] = []
+    seen: set[str] = set()
+    for slug in TESTED_PAGE_SLUGS:
+        spec = spec_by_slug(slug if slug else 'home')
+        if not spec:
+            continue
+        for item in expand_specs_with_ancestors([spec]):
+            if item.slug not in seen:
+                seen.add(item.slug)
+                ordered.append(item)
+    return ordered
 
 
 def scrape_targets():
