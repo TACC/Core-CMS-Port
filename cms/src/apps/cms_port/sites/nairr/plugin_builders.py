@@ -693,6 +693,7 @@ def _emit_home_shaded_card_section(
     section,
     *,
     container_type: str,
+    lg_col: int | None = None,
 ) -> None:
     inner = section.select_one('div.inner') or section
     grid = _home_items_grid(section)
@@ -708,7 +709,7 @@ def _emit_home_shaded_card_section(
     if grid:
         row = builder.add_row(container)
         for item in grid.find_all('div', recursive=False):
-            col = builder.add_column(row, xs_col=12)
+            col = builder.add_column(row, xs_col=12, lg_col=lg_col)
             if opportunities:
                 _emit_home_opportunity_card(builder, col, item)
                 continue
@@ -827,6 +828,7 @@ def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: Bea
                 parent,
                 section,
                 container_type=MUTED_SECTION,
+                lg_col=6,
             )
         elif 'projects-highlights' in classes:
             _emit_home_highlights_section(
@@ -841,6 +843,7 @@ def _emit_home_content_inner_sections(builder: ContentBuilder, parent, soup: Bea
                 parent,
                 section,
                 container_type=MUTED_SECTION,
+                lg_col=6,
             )
         elif 'happenings' in classes:
             _emit_home_happenings_section(
