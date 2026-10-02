@@ -56,6 +56,7 @@ Per-instance files `cms/docker-compose.agent-<port>.yml` (gitignored) live in th
 
 - Set `build.context` **and** every bind mount to the active worktree's `cms/`, as absolute paths. (`build: .` builds from the main checkout.)
 - Recreate the container after editing: `docker compose -f cms/docker-compose.agent-<port>.yml -p cms<port> up -d --build`.
+- Keep the same file name and `-p cms<port>` project name when repointing, so the named volumes stay attached.
 - Before deleting a worktree, repoint its instance to another one.
 
 #### Section Labels
