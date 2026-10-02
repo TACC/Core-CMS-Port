@@ -7,7 +7,7 @@ Port of NAIRR Pilot (Joomla at [nairrpilot.org](https://nairrpilot.org)) into Co
 
 ## Settings
 
-In `settings_custom.py`, add:
+Local instances take `settings_custom.py` from the shared [`cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py) (see [AGENTS.md](../AGENTS.md#git-worktrees-and-docker)). It must contain:
 
 ```py
 PORTAL_SCRAPE_SITE = 'nairr'
@@ -28,7 +28,17 @@ PORTAL_STYLES = [
 ]
 ```
 
+## Home Page
 
+### Sections
+
+Scraped `home.html` section classes don't always match their headings:
+
+| Heading | Scrape class | Import function |
+| --- | --- | --- |
+| Current Opportunities | `section.opportunities` | `_emit_home_shaded_card_section` |
+| What's Happening | `section.news` | `_emit_home_shaded_card_section` |
+| Leadership, Partners, and Contributors | `section.happenings` | `_emit_home_happenings_section` |
 
 ## Static Assets
 

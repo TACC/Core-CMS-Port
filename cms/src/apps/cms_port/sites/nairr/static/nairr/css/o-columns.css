@@ -1,16 +1,5 @@
 /* Object: CSS multicol layout (not Bootstrap grid `.col-*`). */
 .o-columns {
-  column-count: 3;
+  column-width: 30rem;
   column-fill: balance;
-}
-
-.o-columns ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.o-columns li {
-  margin: 0 0 0 1rem;
-  padding: 0.25rem;
 }
