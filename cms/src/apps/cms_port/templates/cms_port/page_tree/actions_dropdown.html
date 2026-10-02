@@ -1,0 +1,32 @@
+{% extends "admin/cms/page/tree/actions_dropdown.html" %}
+{% load admin_urls %}
+{% block actions %}
+    {{ block.super }}
+    {% if port and has_change_permission %}
+        <li class="cms-pagetree-dropdown-separator">&nbsp;</li>
+        {% if not port.is_root %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_refresh' page.id %}">
+                    <span class="cms-icon cms-icon-loader"></span>
+                    <span>Refresh from source…</span>
+                </a>
+            </li>
+        {% endif %}
+        {% if port.descendants %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_refresh' page.id %}?children=1">
+                    <span class="cms-icon cms-icon-loader"></span>
+                    <span>Refresh {% if port.is_root %}all pages{% else %}page and children{% endif %} from source…</span>
+                </a>
+            </li>
+        {% endif %}
+        {% if not port.is_root %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_clear' page.id %}">
+                    <span class="cms-icon cms-icon-close"></span>
+                    <span>Delete generated content…</span>
+                </a>
+            </li>
+        {% endif %}
+    {% endif %}
+{% endblock actions %}
