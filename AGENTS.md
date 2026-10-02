@@ -57,7 +57,7 @@ Per-instance files `cms/docker-compose.agent-<port>.yml` (gitignored) live in th
 - Set `build.context` **and** every bind mount to the active worktree's `cms/`, as absolute paths. (`build: .` builds from the main checkout.)
 - Recreate the container after editing: `docker compose -f cms/docker-compose.agent-<port>.yml -p cms<port> up -d --build`.
 - Keep the same file name and `-p cms<port>` project name when repointing, so the named volumes stay attached.
-- Mount the shared `Core-Portal-Deployments/nairr-oc/camino/cms.settings_custom.py` at `/code/taccsite_cms/settings/settings_custom.py:ro`, not under `settings_from_host` (that mount is read-only, so Docker cannot create the mount point).
+- Mount the shared `Core-Portal-Deployments/<project>/camino/cms.settings_custom.py` (e.g. project `nairr-oc`) at `/code/taccsite_cms/settings/settings_custom.py:ro`, not under `settings_from_host` (that mount is read-only, so Docker cannot create the mount point).
 - Omit the `elasticsearch` service. That shared file sets `PORTAL_SEARCH_INDEX_IS_AUTOMATIC = False`, so saving a page does not index.
 - Before deleting a worktree, repoint its instance to another one.
 
@@ -65,7 +65,7 @@ Per-instance files `cms/docker-compose.agent-<port>.yml` (gitignored) live in th
 
 When setting **TACC Site Section** plugin **Label** values on import (`ContentBuilder.add_section(..., label=...)`):
 
-- Use **`simplify_section_label`** and related helpers in `cms/src/apps/cms_port/common/section_labels.py` (e.g. `section_label_from_html_chunk`, `section_label_from_scrape_section`). Each site passes its own **`shortcuts`** map (full heading text → short label); NAIRR keeps its map in `sites/nairr/section_label_shortcuts.py`.
+- Use **`simplify_section_label`** and related helpers in `cms/src/apps/cms_port/common/section_labels.py` (e.g. `section_label_from_html_chunk`, `section_label_from_scrape_section`). Each site passes its own **`shortcuts`** map (full heading text → short label) (example: NAIRR keeps its map in `sites/nairr/section_label_shortcuts.py`).
 - Use **short** names in **Title Case** so Structure mode stays scannable.
 - **Typically the first two words** of the section heading (usually the scraped `h2` text) are enough.
 - **Do not** stop at two words when they are **vague**, **superfluous** (e.g. leading “What is the”, “How to”), or when they **match the first two words of another heading on the same page**—trim filler or pick a distinct short label instead (add a ``shortcuts`` entry keyed by full heading text).
