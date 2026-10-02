@@ -16,7 +16,7 @@
             <li>
                 <a href="{% url opts|admin_urlname:'port_refresh' page.id %}?children=1">
                     <span class="cms-icon cms-icon-loader"></span>
-                    <span>Refresh {% if port.is_root %}all pages{% else %}page and children{% endif %} from source…</span>
+                    <span>Refresh {% if port.is_root %}all pages{% else %}with children{% endif %}…</span>
                 </a>
             </li>
         {% endif %}
