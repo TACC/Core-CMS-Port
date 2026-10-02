@@ -1,9 +1,12 @@
 """Page tree actions to refresh or clear generated page content."""
 
 from django.contrib import admin, messages
+from django.contrib.admin.utils import quote
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from django.urls import re_path
+from django.utils.html import format_html
+from django.utils.text import capfirst
 
 from cms.admin.pageadmin import PageAdmin
 from cms.models import Page
@@ -46,7 +49,25 @@ class PortPageAdmin(PageAdmin):
             raise self._get_404_exception(object_id)
         return page, port
 
-    def _confirm(self, request, page, title, message, destructive=False):
+    def _page_list(self, request, pages):
+        """Nested list like Django's ``deleted_objects``, nested by page tree."""
+        opts = self.opts
+        roots, stack = [], []
+        for page in pages:
+            while stack and not page.node.path.startswith(stack[-1][0]):
+                stack.pop()
+            item = format_html(
+                '{}: <a href="{}">{}</a>',
+                capfirst(opts.verbose_name),
+                self.get_admin_url('change', quote(page.pk)),
+                page,
+            )
+            children = []
+            (stack[-1][1] if stack else roots).extend([item, children])
+            stack.append((page.node.path, children))
+        return roots
+
+    def _confirm(self, request, page, title, message, destructive=False, pages=()):
         return render(request, 'cms_port/page_action_confirm.html', {
             **self.admin_site.each_context(request),
             'opts': self.opts,
@@ -54,6 +75,7 @@ class PortPageAdmin(PageAdmin):
             'message': message,
             'page': page,
             'destructive': destructive,
+            'changed_pages': self._page_list(request, pages),
         })
 
     def port_refresh(self, request, object_id):
@@ -66,6 +88,7 @@ class PortPageAdmin(PageAdmin):
                 request, page, 'Regenerate children' if children else 'Regenerate content',
                 f'Replace the draft content of {scope} with the latest from the original site? '
                 'Published pages are not changed until you publish.',
+                pages=page_actions.target_pages(port, children),
             )
         result = page_actions.refresh(port, include_children=children)
         if not (result.refreshed or result.missing or result.failed):
@@ -87,6 +110,7 @@ class PortPageAdmin(PageAdmin):
                 request, page, 'Delete content',
                 f'Remove all content from the draft of {page}? The page itself stays.',
                 destructive=True,
+                pages=[page],
             )
         page_actions.clear(page)
         messages.success(request, f'Deleted content of {page}.')

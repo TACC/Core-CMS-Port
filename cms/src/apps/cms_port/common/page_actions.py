@@ -71,6 +71,21 @@ def clear(page, language=None, site_id=None):
     _clear_content(page.get_draft_object(), language or settings.LANGUAGE_CODE)
 
 
+def target_pages(port, include_children, site_id=None):
+    """Existing draft pages whose content ``refresh`` would replace."""
+    registry = load_site(site_id).page_registry
+    specs = [] if port.spec is None else [port.spec]
+    if include_children:
+        specs.extend(port.descendants)
+    reverse_ids = [
+        registry.reverse_id_for_slug(spec.slug)
+        for spec in specs
+        if spec.pattern not in NO_CONTENT_PATTERNS
+    ]
+    pages = Page.objects.drafts().filter(reverse_id__in=reverse_ids)
+    return sorted(pages, key=lambda page: page.node.path)
+
+
 def refresh(port, include_children, language=None, site_id=None):
     """Re-scrape and re-import draft content. Does not publish."""
     site = load_site(site_id)
