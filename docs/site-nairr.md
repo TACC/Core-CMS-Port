@@ -7,7 +7,7 @@ Port of NAIRR Pilot (Joomla at [nairrpilot.org](https://nairrpilot.org)) into Co
 
 ## Settings
 
-In `settings_custom.py`, add:
+Local instances take `settings_custom.py` from the shared [`cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py) (see [AGENTS.md](../AGENTS.md#git-worktrees-and-docker)). It must contain:
 
 ```py
 PORTAL_SCRAPE_SITE = 'nairr'
