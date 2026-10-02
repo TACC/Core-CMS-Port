@@ -62,13 +62,13 @@ class PortPageAdmin(PageAdmin):
         scope = f'{name} and its {len(port.descendants)} child pages' if children and not port.is_root else name
         if request.method != 'POST':
             return self._confirm(
-                request, page, 'Refresh from source',
+                request, page, 'Regenerate content',
                 f'Replace the draft content of {scope} with the latest from the original site? '
                 'Published pages are not changed until you publish.',
             )
         result = page_actions.refresh(port, include_children=children)
         if result.refreshed:
-            messages.success(request, f'Refreshed: {", ".join(result.refreshed)}.')
+            messages.success(request, f'Regenerated: {", ".join(result.refreshed)}.')
         if result.missing:
             messages.warning(request, f'Skipped {len(result.missing)} pages not created in the CMS yet.')
         for failure in result.failed:
@@ -81,11 +81,11 @@ class PortPageAdmin(PageAdmin):
             raise self._get_404_exception(object_id)
         if request.method != 'POST':
             return self._confirm(
-                request, page, 'Delete generated content',
+                request, page, 'Delete content',
                 f'Remove all content from the draft of {page}? The page itself stays.',
             )
         page_actions.clear(page)
-        messages.success(request, f'Deleted generated content of {page}.')
+        messages.success(request, f'Deleted content of {page}.')
         return redirect(self.get_admin_url('changelist'))
 
 
