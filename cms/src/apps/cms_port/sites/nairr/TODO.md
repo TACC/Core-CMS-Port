@@ -55,4 +55,4 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
       (https://github.com/TACC/Core-CMS/issues/1084,
       https://github.com/TACC/Core-CMS/pull/1235). When Core-CMS ships
       `taccsite_cms/settings/overwrites/`, mount host settings there and drop
-      the merge workaround (same pattern as Core-CMS-Template / CTRN-CMS).
+      the merge workaround (same pattern as Core-CMS-Template / CTRN-CMS) — work has started in https://github.com/TACC/Core-CMS-Port/pull/6.
