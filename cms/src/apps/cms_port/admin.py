@@ -56,10 +56,12 @@ class PortPageAdmin(PageAdmin):
         for page in pages:
             while stack and not page.node.path.startswith(stack[-1][0]):
                 stack.pop()
+            # admin_page = self.get_admin_url('change', quote(page.pk)),
             public_page = page.publisher_public or page
             item = format_html(
                 '{}: <a href="{}">{}</a>',
                 capfirst(opts.verbose_name),
+                # admin_page,
                 public_page.get_absolute_url(),
                 page,
             )
