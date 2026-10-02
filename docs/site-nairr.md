@@ -28,7 +28,17 @@ PORTAL_STYLES = [
 ]
 ```
 
+## Home Page
 
+### Sections
+
+Scraped `home.html` section classes don't always match their headings:
+
+| Heading | Scrape class | Import function |
+| --- | --- | --- |
+| Current Opportunities | `section.opportunities` | `_emit_home_shaded_card_section` |
+| What's Happening | `section.news` | `_emit_home_shaded_card_section` |
+| Leadership, Partners, and Contributors | `section.happenings` | `_emit_home_happenings_section` |
 
 ## Static Assets
 
