@@ -44,6 +44,13 @@ Scraped `home.html` section classes don't always match their headings:
 
 Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
 
+## Links
+
+In Link/Button plugins:
+
+- Site-relative links use the **Internal link** field, not External. A blank page is created if the target is missing (see `internal_pages.py`). This is automatic on import.
+- Support, help and ticket links go to https://tacc.utexas.edu/about/help/ (see `support_links.py`).
+
 - `css/annotation.css`
 - `css/o-columns.css`
 - `js/faq-accordion.js`

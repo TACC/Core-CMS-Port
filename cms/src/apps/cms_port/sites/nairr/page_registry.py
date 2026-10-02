@@ -5,10 +5,14 @@ scrape_path: path on nairrpilot.org (no leading slash).
 pattern: import layout — see NAIRR CMS Clone plan.
 """
 
+import hashlib
 from dataclasses import dataclass
 from typing import Optional
 
 PLACEHOLDER_SENTINEL = '<!-- placeholder -->'
+
+# django CMS ``Page.reverse_id`` is ``varchar(40)``.
+REVERSE_ID_MAX_LENGTH = 40
 
 
 @dataclass(frozen=True)
@@ -35,7 +39,11 @@ SECTION_PARENTS = {
 
 def reverse_id_for_slug(slug: str) -> str:
     key = slug.strip('/') or 'home'
-    return 'nairr-' + key.replace('/', '-')
+    reverse_id = 'nairr-' + key.replace('/', '-')
+    if len(reverse_id) > REVERSE_ID_MAX_LENGTH:
+        digest = hashlib.sha1(reverse_id.encode()).hexdigest()[:8]
+        reverse_id = f'{reverse_id[:REVERSE_ID_MAX_LENGTH - 9]}-{digest}'
+    return reverse_id
 
 
 # Order: parents before children where parent_slug is set.

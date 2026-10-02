@@ -526,6 +526,7 @@ def _emit_home_stats(builder: ContentBuilder, container, stats_section) -> None:
                 url=url,
                 link_target=link.get('target', ''),
                 link_context=context,
+                create_missing_page=True,
             )
 
 
@@ -649,6 +650,7 @@ def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, g
             url=cta['url'],
             link_target=cta['target'],
             link_context=cta['link_context'],
+            create_missing_page=True,
         )
 
 
@@ -769,6 +771,7 @@ def _emit_home_highlights_section(
                 _prepare_html(tile_html),
                 href,
                 link_target=link.get('target', ''),
+                create_missing_page=True,
             )
     if _home_section_marketing_buttons(inner, section_grid):
         _emit_home_marketing_button_row(builder, container, inner, section_grid)
