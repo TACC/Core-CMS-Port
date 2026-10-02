@@ -86,4 +86,10 @@ Follow [Core-CMS "Commits"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md
 
 ## Pull Requests
 
-Follow [Core-CMS "Pull Requests"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#pull-requests).
+Follow [Core-CMS "Pull Requests"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#pull-requests). Fill out [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
+
+**Changes** (port convention):
+
+- Use **many** bullets when the PR touches several areas; keep **each bullet short**—one high-level line per change, not fewer bullets with paragraphs.
+- Prefix each bullet with a bold verb (**added**, **updated**, **fixed**, **deleted**, …) as in the template.
+- **Overview** stays 1–3 sentences; **UI** uses a table and meaningful `alt` text on uploaded screenshots.
