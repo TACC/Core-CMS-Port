@@ -43,6 +43,7 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 
 - [ ] header [^5]
 - [ ] footer [^6]
+- [ ] Switch Docker settings mounts to Core-CMS `settings/overwrites/` when available [^7]
 
 [^1]: `PORTAL_STYLES` loads `core-styles.cms.v3-bridge-for-v2-users.css`
       (https://github.com/TACC/Core-Styles/pull/683). Pattern CSS under
@@ -53,3 +54,9 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 [^4]: Review recurring page structure/patterns across pages once more are imported, to spot shared edge cases before writing more `SECTION_OVERRIDES`.
 [^5]: NAIRR header branding (logo, nav) vs https://nairrpilot.org.
 [^6]: NAIRR footer branding vs https://nairrpilot.org.
+[^7]: Today Port uses `settings_from_host` + `docker-merge-settings.sh` so a
+      bind over `taccsite_cms/settings/` does not hide container `settings.py`
+      (https://github.com/TACC/Core-CMS/issues/1084,
+      https://github.com/TACC/Core-CMS/pull/1235). When Core-CMS ships
+      `taccsite_cms/settings/overwrites/`, mount host settings there and drop
+      the merge workaround (same pattern as Core-CMS-Template / CTRN-CMS) — work has started in https://github.com/TACC/Core-CMS-Port/pull/6.
