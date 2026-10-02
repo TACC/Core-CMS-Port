@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from urllib.parse import urljoin
+
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
+
 from cms.api import add_plugin
 
 from djangocms_bootstrap4.contrib.bootstrap4_grid.cms_plugins import (
@@ -71,6 +76,23 @@ class PlaceholderRootGridContainerError(ValueError):
     """Invalid Bootstrap4 grid Container on the Content placeholder root."""
 
 
+# Stand-in host for site-relative links whose internal page does not exist.
+PLACEHOLDER_SITE_URL = 'https://example.com'
+
+_EXTERNAL_URL_VALIDATOR = URLValidator(schemes=['http', 'https'])
+
+
+def _validated_external_url(url: str) -> str:
+    """Apply the admin form's URL check, which ``add_plugin`` skips."""
+    try:
+        _EXTERNAL_URL_VALIDATOR(url)
+    except ValidationError as error:
+        raise ValueError(
+            f'Invalid external link {url!r}: use an internal page or an absolute http(s) URL.'
+        ) from error
+    return url
+
+
 class ContentBuilder:
     def __init__(
         self,
@@ -79,8 +101,12 @@ class ContentBuilder:
         *,
         enforce_placeholder_root_text: bool = True,
         enforce_placeholder_root_grid: bool = True,
+        internal_page_for_url=None,
+        rewrite_url=None,
     ):
         self.placeholder = placeholder
+        self.internal_page_for_url = internal_page_for_url
+        self.rewrite_url = rewrite_url or (lambda url: url)
         self.language = language
         self.enforce_placeholder_root_text = enforce_placeholder_root_text
         self.enforce_placeholder_root_grid = enforce_placeholder_root_grid
@@ -318,6 +344,25 @@ class ContentBuilder:
         self.add_text(card, html)
         return card
 
+    def _link_target_kwargs(self, url: str, create_missing_page: bool = False) -> dict:
+        """Internal link (plus ``#anchor``) when the site resolves ``url`` to a page, else external.
+
+        ``create_missing_page`` lets the site create the page if it does not exist yet.
+        """
+        url = self.rewrite_url(url)
+        base, _, anchor = url.partition('#')
+        internal_page = (
+            self.internal_page_for_url(base, create=create_missing_page)
+            if self.internal_page_for_url
+            else None
+        )
+        if internal_page:
+            return {'internal_link': internal_page, 'anchor': anchor}
+        if url.startswith('/') and not url.startswith('//'):
+            # No internal page: external links must be absolute (the admin form rejects `/path`).
+            url = urljoin(PLACEHOLDER_SITE_URL, url)
+        return {'external_link': _validated_external_url(url)}
+
     def add_card_link(
         self,
         parent,
@@ -327,15 +372,17 @@ class ContentBuilder:
         layout: str = 'default',
         link_target: str = '',
         name: str = '',
+        create_missing_page: bool = False,
     ):
         """Whole-card link via Bootstrap4 Link + ``c-card`` classes (until Card plugin supports href)."""
+        link_target_kwargs = self._link_target_kwargs(url, create_missing_page)
         plugin = add_plugin(
             self.placeholder,
             'Bootstrap4LinkPlugin',
             self.language,
             target=parent,
             name=name,
-            external_link=url,
+            **link_target_kwargs,
             link_type='link',
             attributes={'class': _card_link_class(skin, layout)},
         )
@@ -351,6 +398,7 @@ class ContentBuilder:
         url: str,
         *,
         link_target: str = '',
+        create_missing_page: bool = False,
     ):
         card_link = self.add_card_link(
             parent,
@@ -358,11 +406,12 @@ class ContentBuilder:
             url=url,
             layout='image_top',
             link_target=link_target,
+            create_missing_page=create_missing_page,
         )
         self.add_text(card_link, html)
         return card_link
 
-    def add_button_link(self, parent, *, name: str, url: str, link_target: str = '', link_context: str = 'primary'):
+    def add_button_link(self, parent, *, name: str, url: str, link_target: str = '', link_context: str = 'primary', create_missing_page: bool = False):
         """Bootstrap4 Link/Button plugin (link_type='btn') pointed at an external URL.
 
         Passed by registered name, not class: taccsite_cms extends/re-registers
@@ -372,13 +421,14 @@ class ContentBuilder:
         link_context is required for a real ``.btn`` class to render at all -
         Bootstrap4LinkPlugin.render() only adds it inside `if instance.link_context`.
         """
+        link_target_kwargs = self._link_target_kwargs(url, create_missing_page)
         plugin = add_plugin(
             self.placeholder,
             'Bootstrap4LinkPlugin',
             self.language,
             target=parent,
             name=name,
-            external_link=url,
+            **link_target_kwargs,
             link_type='btn',
             link_context=link_context,
         )

@@ -767,6 +767,7 @@ def _emit_home_highlights_section(
                 _prepare_html(tile_html),
                 href,
                 link_target=link.get('target', ''),
+                create_missing_page=True,
             )
     if _home_section_marketing_buttons(inner, section_grid):
         _emit_home_marketing_button_row(builder, container, inner, section_grid)
