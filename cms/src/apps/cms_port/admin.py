@@ -62,11 +62,13 @@ class PortPageAdmin(PageAdmin):
         scope = f'{name} and its {len(port.descendants)} child pages' if children and not port.is_root else name
         if request.method != 'POST':
             return self._confirm(
-                request, page, 'Regenerate content',
+                request, page, 'Regenerate children' if children else 'Regenerate content',
                 f'Replace the draft content of {scope} with the latest from the original site? '
                 'Published pages are not changed until you publish.',
             )
         result = page_actions.refresh(port, include_children=children)
+        if not (result.refreshed or result.missing or result.failed):
+            messages.info(request, f'{page} has no content of its own to regenerate.')
         if result.refreshed:
             messages.success(request, f'Regenerated: {", ".join(result.refreshed)}.')
         if result.missing:
