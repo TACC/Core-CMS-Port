@@ -57,6 +57,9 @@ class Command(BaseCommand):
         crawl_delay = scrape_settings.crawl_delay
         root.mkdir(parents=True, exist_ok=True)
 
+        if options['tested'] and options['page'] is not None:
+            raise CommandError('Use either a page slug or --tested, not both.')
+
         paths = []
         if options['all']:
             paths = list(page_registry.scrape_targets())
