@@ -25,6 +25,10 @@ PORTAL_STYLES = [
         'is_remote': False,
         'path': 'nairr/css/o-columns.css',
     },
+    {
+        'is_remote': False,
+        'path': 'nairr/css/btn.css',
+    },
 ]
 ```
 
@@ -52,6 +56,7 @@ In Link/Button plugins:
 - Support, help and ticket links go to https://tacc.utexas.edu/about/help/ (see `support_links.py`).
 
 - `css/annotation.css`
+- `css/btn.css`
 - `css/o-columns.css`
 - `js/faq-accordion.js`
 
