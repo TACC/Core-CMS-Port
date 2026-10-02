@@ -30,6 +30,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 - [Scrape / Import Scope](#scrape--import-scope)
 - [Git Worktrees and Docker](#git-worktrees-and-docker)
+- [Section Labels](#section-labels)
 - [Project-Specific](#project-specific)
 
 Scrape third-party pages, then import into django CMS.
@@ -45,13 +46,22 @@ Scrape third-party pages, then import into django CMS.
 
 - Do **not** add new page-scraping or import builder functions (e.g. new `build_*` helpers, registry patterns, or management-command behavior) unless the user explicitly asks.
 - Prefer extending existing `plugin_builders` / `page_registry` paths for the page at hand.
-- **`create_pages` Generated tree (all sites):** After import, every page under **Generated** is shown in navigation. Each **direct child** of **Generated** that has child pages but no content plugins redirects to its first child (folder-only section rows).
+- **`create_pages` Generated tree (all sites):** After import, every page under **Generated** gets `in_navigation=True`. Each **direct child** of **Generated** that has child pages but no content plugins redirects to its first child (folder-only section rows). The **Generated** container itself is hidden from navigation unless you pass **`--show-generated-in-nav`**, which you should **always** pass when running `create_pages` locally.
 
 #### Git Worktrees and Docker
 
 Contributors often use a **git worktree** (e.g. under `~/.cursor/worktrees/...`) while **`core_cms` still bind-mounts a different checkout**—commonly `~/Code/TACC/Core-CMS-Port/cms/`—because Compose was started from that clone. Code edited in the worktree is **not** what the container runs until paths align.
 
 Keep all edits in the **active workspace** only. When Docker must see those edits, realign **`core_cms`** from `<workspace>/cms` (see mount check above) — do **not** write the same changes into another checkout.
+
+#### Section Labels
+
+When setting **TACC Site Section** plugin **Label** values on import (`ContentBuilder.add_section(..., label=...)`):
+
+- Use **`simplify_section_label`** and related helpers in `cms/src/apps/cms_port/common/section_labels.py` (e.g. `section_label_from_html_chunk`, `section_label_from_scrape_section`). Each site passes its own **`shortcuts`** map (full heading text → short label); NAIRR keeps its map in `sites/nairr/section_label_shortcuts.py`.
+- Use **short** names in **Title Case** so Structure mode stays scannable.
+- **Typically the first two words** of the section heading (usually the scraped `h2` text) are enough.
+- **Do not** stop at two words when they are **vague**, **superfluous** (e.g. leading “What is the”, “How to”), or when they **match the first two words of another heading on the same page**—trim filler or pick a distinct short label instead (add a ``shortcuts`` entry keyed by full heading text).
 
 #### Project-Specific
 
