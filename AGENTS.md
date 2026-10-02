@@ -57,6 +57,8 @@ Per-instance files `cms/docker-compose.agent-<port>.yml` (gitignored) live in th
 - Set `build.context` **and** every bind mount to the active worktree's `cms/`, as absolute paths. (`build: .` builds from the main checkout.)
 - Recreate the container after editing: `docker compose -f cms/docker-compose.agent-<port>.yml -p cms<port> up -d --build`.
 - Keep the same file name and `-p cms<port>` project name when repointing, so the named volumes stay attached.
+- Mount the shared `Core-Portal-Deployments/nairr-oc/camino/cms.settings_custom.py` at `/code/taccsite_cms/settings/settings_custom.py:ro`, not under `settings_from_host` (that mount is read-only, so Docker cannot create the mount point).
+- Omit the `elasticsearch` service. That shared file sets `PORTAL_SEARCH_INDEX_IS_AUTOMATIC = False`, so saving a page does not index.
 - Before deleting a worktree, repoint its instance to another one.
 
 #### Section Labels
