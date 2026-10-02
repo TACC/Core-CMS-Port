@@ -11,7 +11,10 @@ import requests
 from bs4 import BeautifulSoup, Comment
 
 from apps.cms_port.common.html_text import collapse_whitespace, polish_html_fragment
+from apps.cms_port.site_loader import portal_scrape_entry
 from apps.cms_port.sites.nairr.page_registry import PLACEHOLDER_SENTINEL
+
+SITE_ID = 'nairr'
 
 
 def rewrite_lead_to_annotation(html: str) -> str:
@@ -45,22 +48,14 @@ Joomla_PLACEHOLDER_RE = re.compile(
 
 
 def scrape_root(settings) -> Path:
-    from django.conf import settings as django_settings
-
-    root = getattr(django_settings, 'NAIRR_SCRAPE_ROOT', None)
-    if not root:
-        root = Path(django_settings.BASE_DIR) / 'scraped' / 'nairr'
-    return Path(root)
+    return portal_scrape_entry(SITE_ID).root
 
 
 def base_url(settings) -> str:
-    from django.conf import settings as django_settings
-
-    return getattr(
-        django_settings,
-        'NAIRR_SCRAPE_BASE_URL',
-        'https://nairrpilot.org',
-    ).rstrip('/')
+    url = portal_scrape_entry(SITE_ID).base_url
+    if url:
+        return url
+    return 'https://nairrpilot.org'
 
 
 def file_path_for_scrape_path(root: Path, scrape_path: str) -> Path:

@@ -1,4 +1,4 @@
-DOCKERHUB_REPO := taccwma/nairr-cms
+DOCKERHUB_REPO := taccwma/core-cms-port
 DOCKER_TAG ?= $(shell git rev-parse --short HEAD)
 DOCKER_IMAGE := $(DOCKERHUB_REPO):$(DOCKER_TAG)
 DOCKER_IMAGE_LATEST := $(DOCKERHUB_REPO):latest
@@ -13,7 +13,7 @@ build:
 
 .PHONY: build-full
 build-full:
-	docker build -t $(DOCKER_IMAGE) --target production -f Dockerfile .
+	docker build -t $(DOCKER_IMAGE) -f Dockerfile .
 	docker tag $(DOCKER_IMAGE) $(DOCKER_IMAGE_BRANCH) # Note: Currently broken for branches with slashes
 
 .PHONY: publish

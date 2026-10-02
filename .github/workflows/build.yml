@@ -2,7 +2,7 @@ name: Build
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, feat/core-cms-port-image]
 
 jobs:
   build_commit:
@@ -34,4 +34,4 @@ jobs:
         with:
           context: cms
           push: true
-          tags: taccwma/nairr-cms:${{ steps.vars.outputs.SHORT_SHA }},taccwma/nairr-cms:${{ steps.vars.outputs.BRANCH_NAME }},taccwma/nairr-cms:latest
+          tags: taccwma/core-cms-port:${{ steps.vars.outputs.SHORT_SHA }},taccwma/core-cms-port:${{ steps.vars.outputs.BRANCH_NAME }},taccwma/core-cms-port:latest
