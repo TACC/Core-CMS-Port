@@ -1,0 +1,32 @@
+{% extends "admin/cms/page/tree/actions_dropdown.html" %}
+{% load admin_urls %}
+{% block actions %}
+    {{ block.super }}
+    {% if port and has_change_permission %}
+        <li class="cms-pagetree-dropdown-separator">&nbsp;</li>
+        {% if not port.is_root %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_refresh' page.id %}">
+                    <span class="cms-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4"/></svg></span>
+                    <span>Regenerate content…</span>
+                </a>
+            </li>
+        {% endif %}
+        {% if port.descendants %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_refresh' page.id %}?children=1">
+                    <span class="cms-icon cms-icon-sitemap"></span>
+                    <span>Regenerate children…</span>
+                </a>
+            </li>
+        {% endif %}
+        {% if not port.is_root %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_clear' page.id %}">
+                    <span class="cms-icon cms-icon-minus-square"></span>
+                    <span>Delete content…</span>
+                </a>
+            </li>
+        {% endif %}
+    {% endif %}
+{% endblock actions %}
