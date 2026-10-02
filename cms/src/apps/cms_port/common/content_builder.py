@@ -79,8 +79,12 @@ class ContentBuilder:
         *,
         enforce_placeholder_root_text: bool = True,
         enforce_placeholder_root_grid: bool = True,
+        internal_page_for_url=None,
+        rewrite_url=None,
     ):
         self.placeholder = placeholder
+        self.internal_page_for_url = internal_page_for_url
+        self.rewrite_url = rewrite_url or (lambda url: url)
         self.language = language
         self.enforce_placeholder_root_text = enforce_placeholder_root_text
         self.enforce_placeholder_root_grid = enforce_placeholder_root_grid
@@ -329,13 +333,15 @@ class ContentBuilder:
         name: str = '',
     ):
         """Whole-card link via Bootstrap4 Link + ``c-card`` classes (until Card plugin supports href)."""
+        url = self.rewrite_url(url)
+        internal_page = self.internal_page_for_url(url) if self.internal_page_for_url else None
         plugin = add_plugin(
             self.placeholder,
             'Bootstrap4LinkPlugin',
             self.language,
             target=parent,
             name=name,
-            external_link=url,
+            **({'internal_link': internal_page} if internal_page else {'external_link': url}),
             link_type='link',
             attributes={'class': _card_link_class(skin, layout)},
         )
@@ -372,13 +378,15 @@ class ContentBuilder:
         link_context is required for a real ``.btn`` class to render at all -
         Bootstrap4LinkPlugin.render() only adds it inside `if instance.link_context`.
         """
+        url = self.rewrite_url(url)
+        internal_page = self.internal_page_for_url(url) if self.internal_page_for_url else None
         plugin = add_plugin(
             self.placeholder,
             'Bootstrap4LinkPlugin',
             self.language,
             target=parent,
             name=name,
-            external_link=url,
+            **({'internal_link': internal_page} if internal_page else {'external_link': url}),
             link_type='btn',
             link_context=link_context,
         )

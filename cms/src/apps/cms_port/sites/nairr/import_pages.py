@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 
 from apps.cms_port.common.content_builder import ContentBuilder
 from apps.cms_port.sites.nairr import scrape_lib
+from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
+from apps.cms_port.sites.nairr.support_links import rewrite_support_url
 from apps.cms_port.sites.nairr.page_registry import PAGE_SPECS, PageSpec
 from apps.cms_port.sites.nairr.plugin_builders import (
     build_article,
@@ -21,7 +23,12 @@ from apps.cms_port.sites.nairr.plugin_builders import (
 
 
 def populate_page_content(spec: PageSpec, placeholder, language, scrape_root) -> None:
-    builder = ContentBuilder(placeholder, language)
+    builder = ContentBuilder(
+        placeholder,
+        language,
+        internal_page_for_url=lambda url: internal_page_for_url(url, language),
+        rewrite_url=rewrite_support_url,
+    )
 
     if spec.pattern in ('section_parent', 'empty', 'blog'):
         return
