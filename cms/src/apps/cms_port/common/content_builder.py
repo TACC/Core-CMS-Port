@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from urllib.parse import urljoin
 
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
+
 from cms.api import add_plugin
 
 from djangocms_bootstrap4.contrib.bootstrap4_grid.cms_plugins import (
@@ -75,6 +78,19 @@ class PlaceholderRootGridContainerError(ValueError):
 
 # Stand-in host for site-relative links whose internal page does not exist.
 PLACEHOLDER_SITE_URL = 'https://example.com'
+
+_EXTERNAL_URL_VALIDATOR = URLValidator(schemes=['http', 'https'])
+
+
+def _validated_external_url(url: str) -> str:
+    """Apply the admin form's URL check, which ``add_plugin`` skips."""
+    try:
+        _EXTERNAL_URL_VALIDATOR(url)
+    except ValidationError as error:
+        raise ValueError(
+            f'Invalid external link {url!r}: use an internal page or an absolute http(s) URL.'
+        ) from error
+    return url
 
 
 class ContentBuilder:
@@ -345,7 +361,7 @@ class ContentBuilder:
         if url.startswith('/') and not url.startswith('//'):
             # No internal page: external links must be absolute (the admin form rejects `/path`).
             url = urljoin(PLACEHOLDER_SITE_URL, url)
-        return {'external_link': url}
+        return {'external_link': _validated_external_url(url)}
 
     def add_card_link(
         self,
