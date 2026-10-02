@@ -267,14 +267,14 @@ class Command(BaseCommand):
                 else child
             )
             if index == 0:
-                draft.move_page(parent_draft.node, 'first-child')
+                self._move_sibling(draft, parent_draft.node, 'first-child')
             else:
                 prev_draft = (
                     siblings[index - 1].get_draft_object()
                     if hasattr(siblings[index - 1], 'get_draft_object')
                     else siblings[index - 1]
                 )
-                draft.move_page(prev_draft.node, 'right')
+                self._move_sibling(draft, prev_draft.node, 'right')
             if not no_publish:
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', UserWarning)
@@ -283,6 +283,18 @@ class Command(BaseCommand):
             self._reorder_siblings_from_registry(
                 child_draft, page_registry, language, publisher, no_publish
             )
+
+    def _move_sibling(self, draft, target_node, position):
+        """Reorder among siblings without ``Page.move_page``.
+
+        ``move_page`` re-checks the slug against root-level paths (bare slug, not full
+        path), so a child ``news`` is renamed ``news-copy-2`` when a root ``/news/``
+        exists. Siblings keep their parent, so no title path needs updating.
+        """
+        parent_id = target_node.pk if position == 'first-child' else target_node.parent_id
+        draft.node.move(target_node, position)
+        draft.node.update(parent_id=parent_id)
+        draft._clear_node_cache()
 
     def _page_has_content_plugins(self, page, language):
         placeholder = page.placeholders.get(slot='content')
