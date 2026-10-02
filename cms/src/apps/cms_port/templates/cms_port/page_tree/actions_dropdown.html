@@ -7,7 +7,7 @@
         {% if not port.is_root %}
             <li>
                 <a href="{% url opts|admin_urlname:'port_refresh' page.id %}">
-                    <span class="cms-icon cms-icon-loader"></span>
+                    <span class="cms-icon cms-icon-window"></span>
                     <span>Refresh from source…</span>
                 </a>
             </li>
@@ -15,7 +15,7 @@
         {% if port.descendants %}
             <li>
                 <a href="{% url opts|admin_urlname:'port_refresh' page.id %}?children=1">
-                    <span class="cms-icon cms-icon-loader"></span>
+                    <span class="cms-icon cms-icon-sitemap"></span>
                     <span>Refresh {% if port.is_root %}all pages{% else %}with children{% endif %}…</span>
                 </a>
             </li>
@@ -23,7 +23,7 @@
         {% if not port.is_root %}
             <li>
                 <a href="{% url opts|admin_urlname:'port_clear' page.id %}">
-                    <span class="cms-icon cms-icon-close"></span>
+                    <span class="cms-icon cms-icon-minus-square"></span>
                     <span>Delete generated content…</span>
                 </a>
             </li>
