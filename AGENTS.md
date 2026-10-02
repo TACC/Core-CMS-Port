@@ -50,9 +50,14 @@ Scrape third-party pages, then import into django CMS.
 
 #### Git Worktrees and Docker
 
-Contributors often use a **git worktree** (e.g. under `~/.cursor/worktrees/...`) while **`core_cms` still bind-mounts a different checkout**—commonly `~/Code/TACC/Core-CMS-Port/cms/`—because Compose was started from that clone. Code edited in the worktree is **not** what the container runs until paths align.
+A container runs whichever checkout its Compose file points at, not the worktree you are editing. Keep all edits in the **active workspace** only—do **not** copy them into another checkout.
 
-Keep all edits in the **active workspace** only. When Docker must see those edits, realign **`core_cms`** from `<workspace>/cms` (see mount check above) — do **not** write the same changes into another checkout.
+Per-instance files `cms/docker-compose.agent-<port>.yml` (gitignored) live in the **main checkout**, so you can see which worktree each instance uses and delete worktrees without losing them.
+
+- Set `build.context` **and** every bind mount to the active worktree's `cms/`, as absolute paths. (`build: .` builds from the main checkout.)
+- Recreate the container after editing: `docker compose -f cms/docker-compose.agent-<port>.yml -p cms<port> up -d --build`.
+- Keep the same file name and `-p cms<port>` project name when repointing, so the named volumes stay attached.
+- Before deleting a worktree, repoint its instance to another one.
 
 #### Section Labels
 
