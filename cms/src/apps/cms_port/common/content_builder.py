@@ -259,23 +259,23 @@ class ContentBuilder:
             **kwargs,
         )
 
-    def add_row(self, parent):
+    def add_row(self, parent, horizontal_alignment=''):
         return add_plugin(
             self.placeholder,
             Bootstrap4GridRowPlugin,
             self.language,
             target=parent,
             vertical_alignment='',
-            horizontal_alignment='',
+            horizontal_alignment=horizontal_alignment,
         )
 
-    def add_column(self, parent, xs_col=12, sm_col=None, md_col=None, lg_col=None, xl_col=None):
+    def add_column(self, parent, xs_col=12, sm_col=None, md_col=None, lg_col=None, xl_col=None, column_type='col'):
         return add_plugin(
             self.placeholder,
             Bootstrap4GridColumnPlugin,
             self.language,
             target=parent,
-            column_type='col',
+            column_type=column_type,
             column_alignment='',
             xs_col=xs_col,
             sm_col=sm_col,

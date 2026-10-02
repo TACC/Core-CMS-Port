@@ -511,21 +511,19 @@ def _emit_home_stats(builder: ContentBuilder, container, stats_section) -> None:
         _emit_home_stat_boxes_row(builder, container, minor.select('div.statBox'))
     buttons = inner.select_one('div.buttons')
     if buttons:
-        row = builder.add_row(container)
-        col = builder.add_column(row, xs_col=12)
+        row = builder.add_row(container, horizontal_alignment='justify-content-center')
         for link in buttons.select('a[href]'):
             name = collapse_whitespace(link.get_text())
             url = link.get('href', '')
             if not name or not url:
                 continue
-            classes = link.get('class') or []
-            context = 'primary' if '--primary' in classes else 'secondary'
+            col = builder.add_column(row, xs_col=None, column_type='col-auto')
             builder.add_button_link(
                 col,
                 name=name,
                 url=url,
                 link_target=link.get('target', ''),
-                link_context=context,
+                link_context=_BUTTON_LINK_CONTEXT,
                 create_missing_page=True,
             )
 
@@ -598,9 +596,8 @@ def _home_section_inner_footer(inner, grid) -> str | None:
     return footer or None
 
 
-def _marketing_button_link_context(link) -> str:
-    classes = link.get('class') or []
-    return 'primary' if '--primary' in classes else 'secondary'
+# Bootstrap ``info`` context = Core-Styles tertiary button (``.btn-info``).
+_BUTTON_LINK_CONTEXT = 'info'
 
 
 def _home_section_marketing_buttons(inner, grid) -> list[dict]:
@@ -632,7 +629,6 @@ def _home_section_marketing_buttons(inner, grid) -> list[dict]:
             'name': name,
             'url': url,
             'target': link.get('target', ''),
-            'link_context': _marketing_button_link_context(link),
         })
     return ctas
 
@@ -641,15 +637,15 @@ def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, g
     ctas = _home_section_marketing_buttons(inner, grid)
     if not ctas:
         return
-    row = builder.add_row(container)
-    col = builder.add_column(row, xs_col=12)
+    row = builder.add_row(container, horizontal_alignment='justify-content-center')
     for cta in ctas:
+        col = builder.add_column(row, xs_col=None, column_type='col-auto')
         builder.add_button_link(
             col,
             name=cta['name'],
             url=cta['url'],
             link_target=cta['target'],
-            link_context=cta['link_context'],
+            link_context=_BUTTON_LINK_CONTEXT,
             create_missing_page=True,
         )
 
