@@ -3,13 +3,3 @@
   column-width: 30rem;
   column-fill: balance;
 }
-
-.o-columns ul {
-  margin: 0;
-  padding: 0;
-}
-
-.o-columns li {
-  margin: 0 0 0 1rem;
-  padding: 0.25rem;
-}
