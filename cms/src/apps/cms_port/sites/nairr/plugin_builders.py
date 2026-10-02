@@ -10,7 +10,6 @@ from apps.cms_port.common.content_builder import (
     GRID_CONTAINER_TYPE_SECTION,
     LIGHT_SECTION,
     MUTED_SECTION,
-    STYLE_CLASS_NAME_SECTION,
 )
 from apps.cms_port.common.card_tile_html import (
     prepare_card_tile_html,
@@ -22,6 +21,11 @@ from apps.cms_port.common.html_text import (
     split_html_for_cms_text_plugins,
 )
 from apps.cms_port.sites.nairr.scrape_lib import rewrite_lead_to_annotation
+from apps.cms_port.sites.nairr.section_label_shortcuts import (
+    nairr_section_label_from_chunk,
+    nairr_section_label_from_home_section,
+    nairr_simplify_section_label,
+)
 
 
 def _prepare_html(html: str) -> str:
@@ -88,26 +92,29 @@ def _h1_markup(h1) -> str | None:
     return f'<h1>{text}</h1>'
 
 
-def _emit_leading_h1(builder: ContentBuilder, parent, soup: BeautifulSoup) -> None:
-    """Page `<h1>` from scrape (before body sections)."""
+def _emit_leading_h1(builder: ContentBuilder, parent, soup: BeautifulSoup):
+    """Page `<h1>` from scrape (before body sections). Returns the Section plugin, if any."""
     h1 = soup.find('h1')
     if not h1:
-        return
+        return None
     parent_classes = h1.find_parent('div', class_=True)
     if parent_classes and parent_classes.get('class'):
         if any('subsection' in c for c in parent_classes['class']):
-            return
+            return None
     markup = _h1_markup(h1)
     if not markup:
         h1.decompose()
-        return
+        return None
+    label = nairr_simplify_section_label(collapse_whitespace(h1.get_text()))
     container = builder.add_section(
         parent,
         GRID_CONTAINER_TYPE_SECTION,
         tag_type='section',
+        label=label,
     )
     builder.add_text(container, _prepare_html(markup))
     h1.decompose()
+    return container
 
 
 def _chunk_leading_tag(chunk: str) -> str | None:
@@ -129,7 +136,12 @@ def _emit_overview_operations_teams(builder: ContentBuilder, parent, chunk: str)
     if not root:
         return
     teams = root.select_one('div.teams')
-    section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
+    section = builder.add_section(
+        parent,
+        GRID_CONTAINER_TYPE_SECTION,
+        tag_type='section',
+        label=nairr_section_label_from_chunk(chunk),
+    )
     if teams:
         before_parts: list[str] = []
         for child in root.children:
@@ -177,7 +189,7 @@ def _h2_title(chunk: str) -> str:
 # Section-content overrides, keyed by (page_slug, <h2> heading text).
 # Audit/extend edge cases here instead of branching inside
 # add_article_text_plugins - anything not listed falls through to the
-# generic h1-container / h2-Style-section handling below.
+# generic h1/h2 Section grid handling below.
 SECTION_OVERRIDES = {
     ('about/overview', 'NAIRR Pilot Operations Teams'): _emit_overview_operations_teams,
 }
@@ -190,30 +202,57 @@ def add_article_text_plugins(
     *,
     page_slug: str | None = None,
 ) -> None:
-    """Text plugins in section/container wrappers; h1 container, h2+ in Style section."""
+    """Text plugins in Section grid wrappers under the page root Container."""
     if not html or not html.strip():
         return
+    pending_h1: str | None = None
+
+    def _flush_pending_h1_section() -> None:
+        nonlocal pending_h1
+        if not pending_h1:
+            return
+        section = builder.add_section(
+            parent,
+            GRID_CONTAINER_TYPE_SECTION,
+            tag_type='section',
+            label=nairr_section_label_from_chunk(pending_h1),
+        )
+        builder.add_text(section, pending_h1)
+        pending_h1 = None
+
     for chunk in split_html_for_cms_text_plugins(html):
         chunk = _prepare_html(chunk)
         if not chunk:
             continue
         leading_tag = _chunk_leading_tag(chunk)
         if leading_tag == 'h1':
-            container = builder.add_section(
+            pending_h1 = chunk
+            continue
+        if leading_tag == 'h2':
+            override = SECTION_OVERRIDES.get((page_slug, _h2_title(chunk)))
+            if override:
+                if pending_h1:
+                    chunk = pending_h1 + chunk
+                    pending_h1 = None
+                override(builder, parent, chunk)
+                continue
+            section = builder.add_section(
                 parent,
                 GRID_CONTAINER_TYPE_SECTION,
                 tag_type='section',
+                label=nairr_section_label_from_chunk(chunk),
             )
-            builder.add_text(container, chunk)
-        elif leading_tag == 'h2':
-            override = SECTION_OVERRIDES.get((page_slug, _h2_title(chunk)))
-            if override:
-                override(builder, parent, chunk)
-                continue
-            section = builder.add_style(parent, STYLE_CLASS_NAME_SECTION, tag_type='section')
-            builder.add_text(section, chunk)
+            body_parts = []
+            if pending_h1:
+                body_parts.append(pending_h1)
+                pending_h1 = None
+            body_parts.append(chunk)
+            builder.add_text(section, ''.join(body_parts))
         else:
+            _flush_pending_h1_section()
             builder.add_text_in_container(parent, chunk)
+
+    _flush_pending_h1_section()
 
 
 def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str | None = None) -> None:
@@ -282,24 +321,38 @@ def _extract_accordion_controls(soup: BeautifulSoup) -> tuple[str | None, str | 
 
 def build_faq(builder: ContentBuilder, parent, html: str) -> None:
     soup = BeautifulSoup(html, 'lxml')
-    _emit_leading_h1(builder, parent, soup)
-
-    # Scope wrapper: JS (faq-accordion.js) targets `.nairr-faq` so Expand/Collapse
-    # All only affects this page's accordions.
-    wrapper = builder.add_style(parent, 'nairr-faq', tag_type='div')
+    header_section = _emit_leading_h1(builder, parent, soup)
 
     banners = []
     for node in soup.select('div.announcement-banner'):
         banners.append(node.decode_contents().strip())
         node.decompose()
 
+    banner_parent = header_section
+    if banner_parent is None and banners:
+        banner_parent = builder.add_section(
+            parent,
+            GRID_CONTAINER_TYPE_SECTION,
+            tag_type='section',
+            label='Announcements',
+        )
+
     for banner_html in dedupe_banners(banners):
         body_html, cta = _extract_banner_cta(banner_html)
-        banner_row = builder.add_row(wrapper)
+        banner_row = builder.add_row(banner_parent)
         banner_col = builder.add_column(banner_row, xs_col=12)
         card = builder.add_card_plain_text(banner_col, body_html)
         if cta and cta['url']:
             builder.add_button_link(card, name=cta['name'], url=cta['url'], link_target=cta['target'])
+
+    # Scope wrapper: JS (faq-accordion.js) uses `.nairr-faq details` for Expand/Collapse All.
+    wrapper = builder.add_section(
+        parent,
+        GRID_CONTAINER_TYPE_SECTION,
+        tag_type='section',
+        additional_classes='nairr-faq',
+        label='Categories',
+    )
 
     expand_text, collapse_text = _extract_accordion_controls(soup)
     if expand_text or collapse_text:
@@ -618,7 +671,16 @@ def _emit_home_accent_intro_and_stats(builder: ContentBuilder, parent, soup: Bea
     stats = soup.select_one('section.stats')
     if not intro and not stats:
         return
-    container = builder.add_section(parent, ACCENT_SECTION, tag_type='section')
+    label = 'Hero & Stats'
+    h1 = soup.find('h1')
+    if h1:
+        label = nairr_simplify_section_label(collapse_whitespace(h1.get_text()))
+    container = builder.add_section(
+        parent,
+        ACCENT_SECTION,
+        tag_type='section',
+        label=label,
+    )
     if intro:
         builder.add_text(container, intro)
     if stats:
@@ -634,7 +696,11 @@ def _emit_home_shaded_card_section(
 ) -> None:
     inner = section.select_one('div.inner') or section
     grid = _home_items_grid(section)
-    container = builder.add_section(parent, container_type)
+    container = builder.add_section(
+        parent,
+        container_type,
+        label=nairr_section_label_from_home_section(section),
+    )
     preamble = _home_section_inner_preamble(inner, grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -674,7 +740,11 @@ def _emit_home_highlights_section(
     highlights_grid = highlights.select_one('div.news-highlights')
     # Preamble/footer use a direct child of ``div.inner`` (the wrap), not the nested grid.
     section_grid = highlights_wrap or highlights_grid
-    container = builder.add_section(parent, container_type)
+    container = builder.add_section(
+        parent,
+        container_type,
+        label=nairr_section_label_from_home_section(highlights),
+    )
     preamble = _home_section_inner_preamble(inner, section_grid)
     if preamble:
         builder.add_text(container, preamble)
@@ -722,7 +792,11 @@ def _emit_home_happenings_section(
     container_type: str,
 ) -> None:
     inner = happenings.select_one('div.inner') or happenings
-    container = builder.add_section(parent, container_type)
+    container = builder.add_section(
+        parent,
+        container_type,
+        label=nairr_section_label_from_home_section(happenings),
+    )
     for child in inner.children:
         if not getattr(child, 'name', None):
             continue
