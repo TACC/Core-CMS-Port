@@ -4,6 +4,22 @@
 {% block extrahead %}
     {{ block.super }}
     <script src="{% static 'admin/js/cancel.js' %}" async></script>
+    <script src="{% static 'cms_port/js/page_action_confirm.js' %}"></script>
+    <style>
+        form.cms-port-page-action-confirm.is-busy .cancel-link {
+            opacity: 0.65;
+            pointer-events: none;
+        }
+        p.cms-port-page-action-progress.help {
+            clear: both;
+            color: var(--dca-gray);
+            font-size: 12px !important;
+            margin-top: 7px !important;
+            margin-left: 2px !important;
+            margin-bottom: 0;
+            padding: 0 !important;
+        }
+    </style>
 {% endblock %}
 
 {% block bodyclass %}djangocms-admin-style delete-confirmation{% endblock %}
@@ -23,10 +39,12 @@
 <svg width="2em" height="2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 5v4h4M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4"/></svg>
 <p>{{ message }}</p></div>{% endif %}
 <ul>{{ changed_pages|unordered_list }}</ul>
-<form method="post">{% csrf_token %}
+<form method="post" class="cms-port-page-action-confirm">{% csrf_token %}
 <div>
 <input class="cms-btn cms-btn-action" type="submit" value="{% translate 'Yes, I’m sure' %}">
 <a href="#" class="button cancel-link">{% translate 'No, take me back' %}</a>
 </div>
 </form>
+<br class="clear">
+<p id="cms-port-page-action-progress" class="help cms-port-page-action-progress" role="status" aria-live="polite" hidden>{{ progress_message }}</p>
 {% endblock content %}

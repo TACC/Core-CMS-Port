@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from django.urls import re_path
 from django.utils.html import format_html
 from django.utils.text import capfirst
+from django.utils.translation import gettext_lazy as _
 
 from cms.admin.pageadmin import PageAdmin
 from cms.models import Page
@@ -70,7 +71,16 @@ class PortPageAdmin(PageAdmin):
             stack.append((page.node.path, children))
         return roots
 
-    def _confirm(self, request, page, title, message, destructive=False, pages=()):
+    def _confirm(
+        self,
+        request,
+        page,
+        title,
+        message,
+        destructive=False,
+        pages=(),
+        progress_message=None,
+    ):
         return render(request, 'cms_port/page_action_confirm.html', {
             **self.admin_site.each_context(request),
             'opts': self.opts,
@@ -79,6 +89,7 @@ class PortPageAdmin(PageAdmin):
             'page': page,
             'destructive': destructive,
             'changed_pages': self._page_list(request, pages),
+            'progress_message': progress_message or _('Working… Please wait.'),
         })
 
     def port_refresh(self, request, object_id):
@@ -87,11 +98,20 @@ class PortPageAdmin(PageAdmin):
         name = 'all generated pages' if port.is_root else str(page)
         scope = f'{name} and its {len(port.descendants)} child pages' if children and not port.is_root else name
         if request.method != 'POST':
+            if children:
+                progress_message = _(
+                    'Regenerating pages… This may take a minute or so.'
+                )
+            else:
+                progress_message = _(
+                    'Regenerating content… This may take a few minutes.'
+                )
             return self._confirm(
                 request, page, 'Regenerate children' if children else 'Regenerate content',
                 f'Replace the draft content of {scope} with the latest from the original site? '
                 'Published pages are not changed until you publish.',
                 pages=page_actions.target_pages(port, children),
+                progress_message=progress_message,
             )
         result = page_actions.refresh(port, include_children=children)
         if not (result.refreshed or result.missing or result.failed):
@@ -114,6 +134,7 @@ class PortPageAdmin(PageAdmin):
                 f'Remove all content from the draft of {page}? The page itself stays.',
                 destructive=True,
                 pages=[page],
+                progress_message=_('Deleting content…'),
             )
         page_actions.clear(page)
         messages.success(request, f'Deleted content of {page}.')
