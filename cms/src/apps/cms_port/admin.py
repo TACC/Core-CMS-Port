@@ -61,8 +61,8 @@ class PortPageAdmin(PageAdmin):
             item = format_html(
                 '{}: <a href="{}">{}</a>',
                 capfirst(opts.verbose_name),
-                # admin_page,
-                public_page.get_absolute_url(),
+                # admin_page, # more like delete confirmation page
+                public_page.get_absolute_url(), # more useful
                 page,
             )
             children = []
