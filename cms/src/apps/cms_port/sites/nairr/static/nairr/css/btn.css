@@ -1,0 +1,5 @@
+/* NAIRR tertiary buttons (`.btn-info`) have no fill until hovered/active.
+   A plain or layered `.btn-info` rule would also override Core-Styles' state fills. */
+.btn-info:not(:hover, :active) {
+  background-color: transparent;
+}

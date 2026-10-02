@@ -25,6 +25,10 @@ PORTAL_STYLES = [
         'is_remote': False,
         'path': 'nairr/css/o-columns.css',
     },
+    {
+        'is_remote': False,
+        'path': 'nairr/css/btn.css',
+    },
 ]
 ```
 
@@ -45,6 +49,7 @@ Scraped `home.html` section classes don't always match their headings:
 Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
 
 - `css/annotation.css`
+- `css/btn.css`
 - `css/o-columns.css`
 - `js/faq-accordion.js`
 
