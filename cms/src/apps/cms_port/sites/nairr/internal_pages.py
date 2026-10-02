@@ -33,10 +33,10 @@ def _blank_spec_for_child(slug):
     return PageSpec(slug, leaf.replace('-', ' ').title(), 'standard.html', '', 'empty', parent_slug=parent_slug)
 
 
-def _get_or_create_page(spec, language, registered=True):
+def _get_or_create_page(spec, language, registered=True, create=True):
     reverse_id = reverse_id_for_slug(spec.slug)
     page = Page.objects.drafts().filter(reverse_id=reverse_id).first()
-    if page:
+    if page or not create:
         return page
     if spec.parent_slug:
         parent = _get_or_create_page(spec_by_slug(spec.parent_slug), language)
@@ -67,8 +67,10 @@ def _get_or_create_page(spec, language, registered=True):
     return page
 
 
-def internal_page_for_url(url: str, language):
+def internal_page_for_url(url: str, language, create: bool = False):
     """Page for a site-relative ``url`` (no ``#anchor``), else ``None``.
+
+    A missing page is only created if ``create`` is true.
 
     Resolves registry pages and children of registered pages; URLs with a query stay external.
     """
@@ -79,6 +81,6 @@ def internal_page_for_url(url: str, language):
     slug = SLUG_ALIASES.get(url.strip('/'), url)
     spec = spec_by_slug(slug)
     if spec:
-        return _get_or_create_page(spec, language)
+        return _get_or_create_page(spec, language, create=create)
     spec = _blank_spec_for_child(slug.strip('/'))
-    return _get_or_create_page(spec, language, registered=False) if spec else None
+    return _get_or_create_page(spec, language, registered=False, create=create) if spec else None

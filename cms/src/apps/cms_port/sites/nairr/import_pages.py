@@ -26,7 +26,7 @@ def populate_page_content(spec: PageSpec, placeholder, language, scrape_root) ->
     builder = ContentBuilder(
         placeholder,
         language,
-        internal_page_for_url=lambda url: internal_page_for_url(url, language),
+        internal_page_for_url=lambda url, create=False: internal_page_for_url(url, language, create=create),
         rewrite_url=rewrite_support_url,
     )
 
