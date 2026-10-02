@@ -512,12 +512,12 @@ def _emit_home_stats(builder: ContentBuilder, container, stats_section) -> None:
     buttons = inner.select_one('div.buttons')
     if buttons:
         row = builder.add_row(container, horizontal_alignment='justify-content-center')
-        col = builder.add_column(row, xs_col=None, column_type='col-auto')
         for link in buttons.select('a[href]'):
             name = collapse_whitespace(link.get_text())
             url = link.get('href', '')
             if not name or not url:
                 continue
+            col = builder.add_column(row, xs_col=None, column_type='col-auto')
             builder.add_button_link(
                 col,
                 name=name,
@@ -637,8 +637,8 @@ def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, g
     if not ctas:
         return
     row = builder.add_row(container, horizontal_alignment='justify-content-center')
-    col = builder.add_column(row, xs_col=None, column_type='col-auto')
     for cta in ctas:
+        col = builder.add_column(row, xs_col=None, column_type='col-auto')
         builder.add_button_link(
             col,
             name=cta['name'],
