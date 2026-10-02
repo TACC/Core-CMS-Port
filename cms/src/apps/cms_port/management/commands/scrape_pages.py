@@ -11,7 +11,7 @@ from apps.cms_port.site_loader import default_site_id, load_site, portal_scrape_
 
 
 class Command(BaseCommand):
-    help = 'Scrape pages into site scrape root (one page, --home, or --all).'
+    help = 'Scrape pages into site scrape root (one page, --home, --tested, or --all).'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -39,6 +39,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Scrape home page to home.html',
         )
+        parser.add_argument(
+            '--tested',
+            action='store_true',
+            help='Only pages marked tested=True in the site page registry.',
+        )
 
     def handle(self, *args, **options):
         site_id = (options['site'] or default_site_id()).strip().lower()
@@ -58,6 +63,16 @@ class Command(BaseCommand):
             paths.append('home')
         elif options['home']:
             paths = ['home']
+        elif options['tested']:
+            specs_for_tested = getattr(page_registry, 'specs_for_tested', None)
+            if not specs_for_tested:
+                raise CommandError('This site page registry has no specs_for_tested().')
+            for spec in specs_for_tested():
+                if spec.pattern == 'section_parent':
+                    continue
+                path = 'home' if spec.pattern == 'home' else spec.scrape_path
+                if path not in paths:
+                    paths.append(path)
         elif options['page']:
             spec = page_registry.spec_by_slug(options['page'])
             if spec and spec.pattern == 'home':
@@ -67,7 +82,7 @@ class Command(BaseCommand):
             else:
                 paths = [options['page'].strip('/')]
         else:
-            raise CommandError('Provide a page slug, --home, or --all')
+            raise CommandError('Provide a page slug, --home, --tested, or --all')
 
         for scrape_path in paths:
             path = scrape_lib.scrape_one(
