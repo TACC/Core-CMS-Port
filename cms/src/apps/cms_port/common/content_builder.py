@@ -322,6 +322,15 @@ class ContentBuilder:
         self.add_text(card, html)
         return card
 
+    def _link_target_kwargs(self, url: str) -> dict:
+        """Internal link (plus ``#anchor``) when the site resolves ``url`` to a page, else external."""
+        url = self.rewrite_url(url)
+        base, _, anchor = url.partition('#')
+        internal_page = self.internal_page_for_url(base) if self.internal_page_for_url else None
+        if internal_page:
+            return {'internal_link': internal_page, 'anchor': anchor}
+        return {'external_link': url}
+
     def add_card_link(
         self,
         parent,
@@ -333,15 +342,14 @@ class ContentBuilder:
         name: str = '',
     ):
         """Whole-card link via Bootstrap4 Link + ``c-card`` classes (until Card plugin supports href)."""
-        url = self.rewrite_url(url)
-        internal_page = self.internal_page_for_url(url) if self.internal_page_for_url else None
+        link_target_kwargs = self._link_target_kwargs(url)
         plugin = add_plugin(
             self.placeholder,
             'Bootstrap4LinkPlugin',
             self.language,
             target=parent,
             name=name,
-            **({'internal_link': internal_page} if internal_page else {'external_link': url}),
+            **link_target_kwargs,
             link_type='link',
             attributes={'class': _card_link_class(skin, layout)},
         )
@@ -378,15 +386,14 @@ class ContentBuilder:
         link_context is required for a real ``.btn`` class to render at all -
         Bootstrap4LinkPlugin.render() only adds it inside `if instance.link_context`.
         """
-        url = self.rewrite_url(url)
-        internal_page = self.internal_page_for_url(url) if self.internal_page_for_url else None
+        link_target_kwargs = self._link_target_kwargs(url)
         plugin = add_plugin(
             self.placeholder,
             'Bootstrap4LinkPlugin',
             self.language,
             target=parent,
             name=name,
-            **({'internal_link': internal_page} if internal_page else {'external_link': url}),
+            **link_target_kwargs,
             link_type='btn',
             link_context=link_context,
         )

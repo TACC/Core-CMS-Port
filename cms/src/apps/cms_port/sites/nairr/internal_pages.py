@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 
 from django.contrib.auth import get_user_model
@@ -14,6 +15,8 @@ from apps.cms_port.sites.nairr.page_registry import (
     reverse_id_for_slug,
     spec_by_slug,
 )
+
+logger = logging.getLogger(__name__)
 
 GENERATED_CONTAINER_SLUG = 'generated'
 
@@ -30,7 +33,7 @@ def _blank_spec_for_child(slug):
     return PageSpec(slug, leaf.replace('-', ' ').title(), 'standard.html', '', 'empty', parent_slug=parent_slug)
 
 
-def _get_or_create_page(spec, language):
+def _get_or_create_page(spec, language, registered=True):
     reverse_id = reverse_id_for_slug(spec.slug)
     page = Page.objects.drafts().filter(reverse_id=reverse_id).first()
     if page:
@@ -56,14 +59,26 @@ def _get_or_create_page(spec, language):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', UserWarning)
         publish_page(page, publisher, language)
+    logger.warning(
+        'Created blank page for /%s%s',
+        spec.slug,
+        '' if registered else ' (not in page registry: check the link for a typo)',
+    )
     return page
 
 
 def internal_page_for_url(url: str, language):
-    """Page for a site-relative ``url`` known to the page registry, else ``None``."""
+    """Page for a site-relative ``url`` (no ``#anchor``), else ``None``.
+
+    Resolves registry pages and children of registered pages; URLs with a query stay external.
+    """
     if not url.startswith('/') or url.startswith('//'):
         return None
-    slug = url.split('#')[0].split('?')[0]
-    slug = SLUG_ALIASES.get(slug.strip('/'), slug)
-    spec = spec_by_slug(slug) or _blank_spec_for_child(slug.strip('/'))
-    return _get_or_create_page(spec, language) if spec else None
+    if '?' in url:
+        return None
+    slug = SLUG_ALIASES.get(url.strip('/'), url)
+    spec = spec_by_slug(slug)
+    if spec:
+        return _get_or_create_page(spec, language)
+    spec = _blank_spec_for_child(slug.strip('/'))
+    return _get_or_create_page(spec, language, registered=False) if spec else None
