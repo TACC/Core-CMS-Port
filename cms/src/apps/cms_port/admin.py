@@ -46,13 +46,14 @@ class PortPageAdmin(PageAdmin):
             raise self._get_404_exception(object_id)
         return page, port
 
-    def _confirm(self, request, page, title, message):
+    def _confirm(self, request, page, title, message, destructive=False):
         return render(request, 'cms_port/page_action_confirm.html', {
             **self.admin_site.each_context(request),
             'opts': self.opts,
             'title': title,
             'message': message,
             'page': page,
+            'destructive': destructive,
         })
 
     def port_refresh(self, request, object_id):
@@ -85,6 +86,7 @@ class PortPageAdmin(PageAdmin):
             return self._confirm(
                 request, page, 'Delete content',
                 f'Remove all content from the draft of {page}? The page itself stays.',
+                destructive=True,
             )
         page_actions.clear(page)
         messages.success(request, f'Deleted content of {page}.')
