@@ -524,6 +524,7 @@ def _emit_home_stats(builder: ContentBuilder, container, stats_section) -> None:
                 url=url,
                 link_target=link.get('target', ''),
                 link_context=_BUTTON_LINK_CONTEXT,
+                create_missing_page=True,
             )
 
 
@@ -645,6 +646,7 @@ def _emit_home_marketing_button_row(builder: ContentBuilder, container, inner, g
             url=cta['url'],
             link_target=cta['target'],
             link_context=_BUTTON_LINK_CONTEXT,
+            create_missing_page=True,
         )
 
 
