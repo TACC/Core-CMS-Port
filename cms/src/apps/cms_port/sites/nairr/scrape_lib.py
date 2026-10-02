@@ -11,7 +11,27 @@ import requests
 from bs4 import BeautifulSoup, Comment
 
 from apps.cms_port.common.html_text import collapse_whitespace, polish_html_fragment
+from apps.cms_port.site_loader import portal_scrape_entry
 from apps.cms_port.sites.nairr.page_registry import PLACEHOLDER_SENTINEL
+
+SITE_ID = 'nairr'
+
+
+def rewrite_lead_to_annotation(html: str) -> str:
+    """Replace Bootstrap ``.lead`` with ``.annotation`` (NAIRR annotation apparatus)."""
+    html = html.strip()
+    if not html or 'lead' not in html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-rewrite>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-rewrite]')
+    if not root:
+        return html
+    for el in root.select('.lead'):
+        classes = [c for c in (el.get('class') or []) if c != 'lead']
+        if 'annotation' not in classes and 'u-annotation' not in classes:
+            classes.append('annotation')
+        el['class'] = classes
+    return root.decode_contents().strip()
 
 STRIP_SELECTORS = (
     '#resource_catalog_app',
@@ -28,22 +48,14 @@ Joomla_PLACEHOLDER_RE = re.compile(
 
 
 def scrape_root(settings) -> Path:
-    from django.conf import settings as django_settings
-
-    root = getattr(django_settings, 'NAIRR_SCRAPE_ROOT', None)
-    if not root:
-        root = Path(django_settings.BASE_DIR) / 'scraped' / 'nairr'
-    return Path(root)
+    return portal_scrape_entry(SITE_ID).root
 
 
 def base_url(settings) -> str:
-    from django.conf import settings as django_settings
-
-    return getattr(
-        django_settings,
-        'NAIRR_SCRAPE_BASE_URL',
-        'https://nairrpilot.org',
-    ).rstrip('/')
+    url = portal_scrape_entry(SITE_ID).base_url
+    if url:
+        return url
+    return 'https://nairrpilot.org'
 
 
 def file_path_for_scrape_path(root: Path, scrape_path: str) -> Path:
@@ -103,7 +115,7 @@ def extract_article_html(document_html: str) -> str:
         main = soup.select_one('main.page, main')
         inner = main.decode_contents().strip() if main else ''
     inner = _prepend_h1_to_inner(inner, h1_fragment)
-    inner = polish_html_fragment(inner)
+    inner = rewrite_lead_to_annotation(polish_html_fragment(inner))
     return _finalize_extracted(inner)
 
 
@@ -123,7 +135,7 @@ def extract_home_html(document_html: str) -> str:
     if inner:
         parts.append(inner)
     combined = '\n'.join(parts)
-    combined = polish_html_fragment(combined)
+    combined = rewrite_lead_to_annotation(polish_html_fragment(combined))
     return _finalize_extracted(combined)
 
 

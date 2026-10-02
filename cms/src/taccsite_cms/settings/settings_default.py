@@ -11,15 +11,26 @@ SILENCED_SYSTEM_CHECKS = ['captcha.recaptcha_test_key_error']
 SESSION_COOKIE_SECURE = False
 
 ########################
-# CMS port (NAIRR Pilot)
+# CMS port (Multi-Site)
 ########################
 
 import os
 
 from taccsite_cms.settings.settings import BASE_DIR
 
-CMS_PORT_SITE = 'nairr'
+# Set `PORTAL_SCRAPE_SITE` in `settings_custom.py`
+# PORTAL_SCRAPE_SITE = '...'
 
-NAIRR_SCRAPE_ROOT = os.path.join(BASE_DIR, 'scraped', 'nairr')
-NAIRR_SCRAPE_BASE_URL = 'https://nairrpilot.org'
-NAIRR_SCRAPE_CRAWL_DELAY = 1.0
+PORTAL_SCRAPE = {
+    'nairr': {
+        'ROOT': os.path.join(BASE_DIR, 'scraped', 'nairr'),
+        'BASE_URL': 'https://nairrpilot.org',
+        'CRAWL_DELAY': 1.0,
+    },
+}
+
+# Set `PORTAL_STYLES` in `settings_custom.py`
+# PORTAL_STYLES = [{
+#     'is_remote': True,
+#     'path': 'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7/dist/core-styles.cms.v3-bridge-for-v2-users.css',
+# }]
