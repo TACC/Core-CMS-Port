@@ -1,4 +1,4 @@
-"""Page tree actions to refresh or clear generated page content."""
+"""Page tree actions to scrape, refresh, or clear generated page content."""
 
 from django.contrib import admin, messages
 from django.contrib.admin.utils import quote
@@ -30,6 +30,11 @@ class PortPageAdmin(PageAdmin):
                 r'^([0-9]+)/port-clear/$',
                 self.admin_site.admin_view(self.port_clear),
                 name=f'{info}_port_clear',
+            ),
+            re_path(
+                r'^([0-9]+)/port-scrape/$',
+                self.admin_site.admin_view(self.port_scrape),
+                name=f'{info}_port_scrape',
             ),
         ] + super().get_urls()
 
@@ -120,6 +125,36 @@ class PortPageAdmin(PageAdmin):
             messages.success(request, f'Regenerated: {", ".join(result.refreshed)}.')
         if result.missing:
             messages.warning(request, f'Skipped {len(result.missing)} pages not created in the CMS yet.')
+        for failure in result.failed:
+            messages.error(request, f'Failed: {failure}')
+        return redirect(self.get_admin_url('changelist'))
+
+    def port_scrape(self, request, object_id):
+        page, port = self._port_page(request, object_id)
+        children = request.GET.get('children') == '1' or port.is_root
+        name = 'all generated pages' if port.is_root else str(page)
+        scope = f'{name} and its {len(port.descendants)} child pages' if children and not port.is_root else name
+        if request.method != 'POST':
+            if children:
+                progress_message = _(
+                    'Scraping pages… This may take a minute or so.'
+                )
+            else:
+                progress_message = _(
+                    'Scraping page… This may take a few minutes.'
+                )
+            return self._confirm(
+                request, page, 'Scrape children' if children else 'Scrape page',
+                f'Fetch the latest HTML for {scope} from the original site into scrape files? '
+                'CMS page content is not changed.',
+                pages=page_actions.target_pages(port, children),
+                progress_message=progress_message,
+            )
+        result = page_actions.scrape(port, include_children=children)
+        if not (result.scraped or result.failed):
+            messages.info(request, f'{page} has no scrape target of its own.')
+        if result.scraped:
+            messages.success(request, f'Scraped: {", ".join(result.scraped)}.')
         for failure in result.failed:
             messages.error(request, f'Failed: {failure}')
         return redirect(self.get_admin_url('changelist'))
