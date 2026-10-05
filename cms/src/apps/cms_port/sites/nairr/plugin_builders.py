@@ -41,18 +41,6 @@ def extract_announcement_banners(html: str) -> list[str]:
     return banners
 
 
-def dedupe_banner_html(banners: list[str]) -> str | None:
-    if not banners:
-        return None
-    seen = set()
-    for body in banners:
-        key = BeautifulSoup(body, 'lxml').get_text(' ', strip=True)
-        if key and key not in seen:
-            seen.add(key)
-            return body
-    return banners[0]
-
-
 def dedupe_banners(banners: list[str]) -> list[str]:
     """Keep every banner, but drop exact-text repeats."""
     seen = set()
@@ -173,6 +161,10 @@ SECTION_OVERRIDES = {
 }
 
 
+def _is_announcement_banner_element(node) -> bool:
+    return getattr(node, 'name', None) == 'div' and 'announcement-banner' in (node.get('class') or [])
+
+
 def add_article_text_plugins(
     builder: ContentBuilder,
     parent,
@@ -183,7 +175,31 @@ def add_article_text_plugins(
     """Text plugins in Section grid wrappers under the page root Container."""
     if not html or not html.strip():
         return
+    _import_article_with_announcement_banners_in_order(
+        builder, parent, html, page_slug=page_slug
+    )
+
+
+def _add_article_text_plugins_from_html(
+    builder: ContentBuilder,
+    parent,
+    html: str,
+    *,
+    page_slug: str | None = None,
+):
+    """Return the last TACC Site Section plugin created (for inline announcement cards)."""
+    if not html or not html.strip():
+        return None
+    html = _strip_joomla_banners_to_alerts(builder, parent, html)
+    if not html.strip():
+        return None
     pending_h1: str | None = None
+    last_section = None
+
+    def _note_section(section) -> None:
+        nonlocal last_section
+        if section is not None:
+            last_section = section
 
     def _flush_pending_h1_section() -> None:
         nonlocal pending_h1
@@ -196,6 +212,7 @@ def add_article_text_plugins(
             label=nairr_section_label_from_chunk(pending_h1),
         )
         builder.add_text(section, pending_h1)
+        _note_section(section)
         pending_h1 = None
 
     for chunk in split_html_for_cms_text_plugins(html):
@@ -226,41 +243,68 @@ def add_article_text_plugins(
                 pending_h1 = None
             body_parts.append(chunk)
             builder.add_text(section, ''.join(body_parts))
+            _note_section(section)
         else:
             _flush_pending_h1_section()
-            builder.add_text_in_container(parent, chunk)
+            section = builder.add_section(
+                parent,
+                MUTED_SECTION,
+                tag_type='div',
+            )
+            builder.add_text(section, chunk)
+            _note_section(section)
 
     _flush_pending_h1_section()
+    return last_section
 
 
-def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str | None = None) -> None:
-    add_article_text_plugins(builder, parent, html, page_slug=page_slug)
-
-
-def build_sidebar_article(
+def _import_article_with_announcement_banners_in_order(
     builder: ContentBuilder,
     parent,
     html: str,
     *,
     page_slug: str | None = None,
 ) -> None:
-    soup = BeautifulSoup(html, 'lxml')
-    banners = []
-    for node in soup.select('div.announcement-banner'):
-        banners.append(node.decode_contents().strip())
-        node.decompose()
-    body_html = soup.decode_contents().strip()
-    banner_html = dedupe_banner_html(banners)
+    """Emit ``div.announcement-banner`` Plain Cards in scrape order (duplicates allowed)."""
+    html = html.strip()
+    if 'announcement-banner' not in html:
+        _add_article_text_plugins_from_html(builder, parent, html, page_slug=page_slug)
+        return
+    soup = BeautifulSoup(f'<div data-nairr-article-root>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-article-root]')
+    if not root:
+        _add_article_text_plugins_from_html(builder, parent, html, page_slug=page_slug)
+        return
+    chunk_parts: list[str] = []
+    last_content_section = None
 
-    row = builder.add_row(parent)
-    # xs_col=12 stacks main/side full-width on narrow screens; lg_col splits
-    # them side by side from the lg breakpoint up (see 9db8570d).
-    main_col = builder.add_column(row, xs_col=12, lg_col=8)
-    if body_html:
-        add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
-    if banner_html:
-        side_col = builder.add_column(row, xs_col=12, lg_col=4)
-        builder.add_card_plain_text(side_col, banner_html)
+    def flush_article_html() -> None:
+        nonlocal last_content_section
+        chunk_html = ''.join(chunk_parts).strip()
+        chunk_parts.clear()
+        if chunk_html:
+            last_content_section = _add_article_text_plugins_from_html(
+                builder, parent, chunk_html, page_slug=page_slug
+            )
+
+    for child in list(root.children):
+        if _is_announcement_banner_element(child):
+            flush_article_html()
+            _emit_announcement_banner_plain_cards(
+                builder,
+                parent,
+                [child.decode_contents().strip()],
+                dedupe=False,
+                section_target=last_content_section,
+            )
+            continue
+        if getattr(child, 'name', None) or str(child).strip():
+            chunk_parts.append(str(child))
+    flush_article_html()
+
+
+def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str | None = None) -> None:
+    add_article_text_plugins(builder, parent, html, page_slug=page_slug)
 
 
 def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
@@ -282,6 +326,41 @@ def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
             wrapper.unwrap()
     body_html = root.decode_contents().strip() if root else banner_html
     return body_html, cta
+
+
+def _emit_announcement_banner_plain_cards(
+    builder: ContentBuilder,
+    parent,
+    banner_inners: list[str],
+    *,
+    dedupe: bool = True,
+    section_target=None,
+) -> None:
+    """``div.announcement-banner`` → Plain Card (+ optional Button CTA) inside a Section."""
+    layout_parent = builder._content_parent(parent)
+    inners = dedupe_banners(banner_inners) if dedupe else banner_inners
+    for banner_html in inners:
+        body_html, cta = _extract_banner_cta(banner_html)
+        body_html = _prepare_html(body_html)
+        if not body_html or not BeautifulSoup(body_html, 'lxml').get_text(strip=True):
+            continue
+        card_parent = section_target
+        if card_parent is None and getattr(layout_parent, 'plugin_type', None) == 'TaccsiteSectionPlugin':
+            card_parent = layout_parent
+        if card_parent is None:
+            card_parent = builder.add_section(
+                layout_parent,
+                MUTED_SECTION,
+                tag_type='section',
+            )
+        card = builder.add_card_plain_text(card_parent, body_html)
+        if cta and cta['url']:
+            builder.add_button_link(
+                card,
+                name=cta['name'],
+                url=cta['url'],
+                link_target=cta['target'],
+            )
 
 
 def _extract_accordion_controls(soup: BeautifulSoup) -> tuple[str | None, str | None]:
@@ -315,13 +394,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
             label='Announcements',
         )
 
-    for banner_html in dedupe_banners(banners):
-        body_html, cta = _extract_banner_cta(banner_html)
-        banner_row = builder.add_row(banner_parent)
-        banner_col = builder.add_column(banner_row, xs_col=12)
-        card = builder.add_card_plain_text(banner_col, body_html)
-        if cta and cta['url']:
-            builder.add_button_link(card, name=cta['name'], url=cta['url'], link_target=cta['target'])
+    _emit_announcement_banner_plain_cards(builder, banner_parent, banners)
 
     # Scope wrapper: JS (faq-accordion.js) uses `.nairr-faq details` for Expand/Collapse All.
     wrapper = builder.add_section(
@@ -510,8 +583,16 @@ def _home_items_grid(section):
     return section.select_one('div.items-grid')
 
 
-def _home_opportunities_banner_alert_html(banner) -> str:
-    """Joomla ``div.banner`` (icon + ``div.content``) → Bootstrap 4 alert."""
+def _is_joomla_icon_banner(node) -> bool:
+    """``div.banner`` (home opportunities, etc.), not ``div.announcement-banner``."""
+    if getattr(node, 'name', None) != 'div':
+        return False
+    classes = node.get('class') or []
+    return 'banner' in classes and 'announcement-banner' not in classes
+
+
+def _joomla_banner_body_html(banner) -> str:
+    """Joomla ``div.banner`` (icon + ``div.content``) → alert body HTML only."""
     content = banner.select_one('div.content')
     if content:
         inner = _prepare_html(content.decode_contents().strip())
@@ -525,23 +606,59 @@ def _home_opportunities_banner_alert_html(banner) -> str:
         for node in root.select('div.content'):
             node.unwrap()
         inner = _prepare_html(root.decode_contents().strip())
-    if not inner:
-        return ''
-    return f'<div class="alert alert-info" role="alert">{inner}</div>'
+    return inner or ''
+
+
+def _banner_nodes_before(inner, stop_node) -> list:
+    """Direct children of ``inner`` before ``stop_node`` that are Joomla ``div.banner``."""
+    if not inner or not stop_node:
+        return []
+    nodes = []
+    for child in inner.children:
+        if child == stop_node:
+            break
+        if _is_joomla_icon_banner(child):
+            nodes.append(child)
+    return nodes
+
+
+def _emit_joomla_banner_alerts(builder: ContentBuilder, parent, banner_nodes) -> None:
+    for banner in banner_nodes:
+        body = _joomla_banner_body_html(banner)
+        if body:
+            builder.add_admonition_alert(parent, body, alert_context='secondary')
+
+
+def _strip_joomla_banners_to_alerts(builder: ContentBuilder, parent, html: str) -> str:
+    """Remove every ``div.banner`` from ``html``, emitting Admonition alerts on ``parent`` first."""
+    html = html.strip()
+    if not html or 'banner' not in html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-banner-root>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-banner-root]')
+    if not root:
+        return html
+    for node in list(root.find_all('div', class_=lambda c: c and 'banner' in c)):
+        if not _is_joomla_icon_banner(node):
+            continue
+        body = _joomla_banner_body_html(node)
+        if body:
+            builder.add_admonition_alert(parent, body, alert_context='secondary')
+        node.decompose()
+    return root.decode_contents().strip()
 
 
 def _home_section_preamble_child_html(child) -> str | None:
     name = getattr(child, 'name', None)
     if not name:
         return None
-    classes = child.get('class') or []
-    if name == 'div' and 'banner' in classes:
-        return _home_opportunities_banner_alert_html(child)
+    if _is_joomla_icon_banner(child):
+        return None
     return str(child)
 
 
 def _home_section_inner_preamble(inner, grid) -> str | None:
-    """Heading, banners, and other markup in ``div.inner`` before the card grid."""
+    """Heading and other markup in ``div.inner`` before the card grid (not ``div.banner``)."""
     if not inner or not grid:
         return None
     parts: list[str] = []
@@ -678,10 +795,11 @@ def _emit_home_shaded_card_section(
         container_type,
         label=nairr_section_label_from_home_section(section),
     )
+    opportunities = _is_home_opportunities_section(section)
     preamble = _home_section_inner_preamble(inner, grid)
     if preamble:
         builder.add_text(container, preamble)
-    opportunities = _is_home_opportunities_section(section)
+    _emit_joomla_banner_alerts(builder, container, _banner_nodes_before(inner, grid))
     if grid:
         row = builder.add_row(container)
         for item in grid.find_all('div', recursive=False):
@@ -730,6 +848,7 @@ def _emit_home_highlights_section(
     preamble = _home_section_inner_preamble(inner, section_grid)
     if preamble:
         builder.add_text(container, preamble)
+    _emit_joomla_banner_alerts(builder, container, _banner_nodes_before(inner, section_grid))
     if highlights_grid:
         row = builder.add_row(container)
         for link in highlights_grid.select('a'):

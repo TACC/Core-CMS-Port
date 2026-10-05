@@ -396,6 +396,32 @@ class ContentBuilder:
         self.add_text(card_link, html)
         return card_link
 
+    def add_admonition_alert(
+        self,
+        parent,
+        html: str,
+        *,
+        alert_context: str = 'secondary',
+    ):
+        """Bootstrap 4 Alert plugin with TACC Admonition appearance (Core-Styles + Cortal icons)."""
+        from taccsite_cms.djangocms_bootstrap4.contrib.bootstrap4_alerts.appearance import (
+            ALERT_APPEARANCE_ADMONITION,
+            appearance_attributes,
+        )
+
+        if not html or not str(html).strip():
+            return None
+        alert = add_plugin(
+            self.placeholder,
+            'Bootstrap4AlertsPlugin',
+            self.language,
+            target=parent,
+            alert_context=alert_context,
+            attributes=appearance_attributes(ALERT_APPEARANCE_ADMONITION),
+        )
+        self.add_text(alert, html)
+        return alert
+
     def add_button_link(self, parent, *, name: str, url: str, link_target: str = '', link_context: str = 'primary', create_missing_page: bool = False):
         """Bootstrap4 Link/Button plugin (link_type='btn') pointed at an external URL.
 

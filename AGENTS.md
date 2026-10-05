@@ -74,7 +74,6 @@ When building **cards** from scraped Joomla HTML (`plugin_builders`):
 - Imported tiles default to **Plain** (`add_card_plain_text` / `CARD_SKIN_DEFAULT` in `content_builder`); **Statistic** figures use `add_card_stat_text` / `card--stat` (NAIRR registers **Statistic** in `sites/nairr/card_skins.py` at app ready). Use `add_card_standard_text` only when Standard is intentional.
 - Prefer **Bootstrap4 Link (button)** plugins for tile CTAs (same pattern as FAQ announcement banners: `ContentBuilder.add_button_link`), not scraped `a.more-btn` or `marketing-button` markup in the Text plugin body.
 - Home **stats** (`section.stats`): one Card per figure (`add_card_stat_text`), not Joomla `div.inner` / `statBox` / `major` / `minor` markup.
-- Home **opportunities banner** (`div.banner`): Bootstrap 4 `alert alert-info`, not Joomla icon + `div.content` markup.
 - Do **not** copy Joomla wrapper `<div>`s and classes (e.g. `with-controls`, `content`, `more-buttons`) into card text unless they map to styles this CMS actually loads. Unwrap or drop them when unsure.
 - If you are unsure whether a scraped class is still needed, **ask** before preserving it.
 

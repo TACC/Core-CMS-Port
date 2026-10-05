@@ -18,7 +18,6 @@ from apps.cms_port.sites.nairr.plugin_builders import (
     build_faq,
     build_getting_started,
     build_home_from_scrape,
-    build_sidebar_article,
 )
 
 
@@ -46,8 +45,6 @@ def populate_page_content(spec: PageSpec, placeholder, language, scrape_root) ->
 
     if spec.pattern == 'article':
         build_article(builder, None, html, page_slug=spec.slug)
-    elif spec.pattern == 'sidebar_article':
-        build_sidebar_article(builder, None, html, page_slug=spec.slug)
     elif spec.pattern == 'faq':
         build_faq(builder, None, html)
     elif spec.pattern == 'getting_started':
