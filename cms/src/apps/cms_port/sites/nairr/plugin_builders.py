@@ -161,6 +161,10 @@ SECTION_OVERRIDES = {
 }
 
 
+def _is_announcement_banner_element(node) -> bool:
+    return getattr(node, 'name', None) == 'div' and 'announcement-banner' in (node.get('class') or [])
+
+
 def add_article_text_plugins(
     builder: ContentBuilder,
     parent,
@@ -171,7 +175,20 @@ def add_article_text_plugins(
     """Text plugins in Section grid wrappers under the page root Container."""
     if not html or not html.strip():
         return
-    html = _strip_announcement_banners_to_plain_cards(builder, parent, html)
+    _import_article_with_announcement_banners_in_order(
+        builder, parent, html, page_slug=page_slug
+    )
+
+
+def _add_article_text_plugins_from_html(
+    builder: ContentBuilder,
+    parent,
+    html: str,
+    *,
+    page_slug: str | None = None,
+) -> None:
+    if not html or not html.strip():
+        return
     html = _strip_joomla_banners_to_alerts(builder, parent, html)
     if not html.strip():
         return
@@ -225,6 +242,48 @@ def add_article_text_plugins(
     _flush_pending_h1_section()
 
 
+def _import_article_with_announcement_banners_in_order(
+    builder: ContentBuilder,
+    parent,
+    html: str,
+    *,
+    page_slug: str | None = None,
+) -> None:
+    """Emit ``div.announcement-banner`` Plain Cards in scrape order (duplicates allowed)."""
+    html = html.strip()
+    if 'announcement-banner' not in html:
+        _add_article_text_plugins_from_html(builder, parent, html, page_slug=page_slug)
+        return
+    soup = BeautifulSoup(f'<div data-nairr-article-root>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-article-root]')
+    if not root:
+        _add_article_text_plugins_from_html(builder, parent, html, page_slug=page_slug)
+        return
+    chunk_parts: list[str] = []
+
+    def flush_article_html() -> None:
+        chunk_html = ''.join(chunk_parts).strip()
+        chunk_parts.clear()
+        if chunk_html:
+            _add_article_text_plugins_from_html(
+                builder, parent, chunk_html, page_slug=page_slug
+            )
+
+    for child in list(root.children):
+        if _is_announcement_banner_element(child):
+            flush_article_html()
+            _emit_announcement_banner_plain_cards(
+                builder,
+                parent,
+                [child.decode_contents().strip()],
+                dedupe=False,
+            )
+            continue
+        if getattr(child, 'name', None) or str(child).strip():
+            chunk_parts.append(str(child))
+    flush_article_html()
+
+
 def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str | None = None) -> None:
     add_article_text_plugins(builder, parent, html, page_slug=page_slug)
 
@@ -251,7 +310,7 @@ def build_article_announcement_column(
         add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
     if banners:
         side_col = builder.add_column(row, xs_col=12, lg_col=4)
-        _emit_announcement_banner_plain_cards(builder, side_col, banners)
+        _emit_announcement_banner_plain_cards(builder, side_col, banners, dedupe=True)
 
 
 def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
@@ -279,9 +338,12 @@ def _emit_announcement_banner_plain_cards(
     builder: ContentBuilder,
     parent,
     banner_inners: list[str],
+    *,
+    dedupe: bool = True,
 ) -> None:
     """``div.announcement-banner`` → full-width Plain Card (+ optional Button CTA)."""
-    for banner_html in dedupe_banners(banner_inners):
+    inners = dedupe_banners(banner_inners) if dedupe else banner_inners
+    for banner_html in inners:
         body_html, cta = _extract_banner_cta(banner_html)
         body_html = _prepare_html(body_html)
         if not body_html or not BeautifulSoup(body_html, 'lxml').get_text(strip=True):
@@ -296,27 +358,6 @@ def _emit_announcement_banner_plain_cards(
                 url=cta['url'],
                 link_target=cta['target'],
             )
-
-
-def _strip_announcement_banners_to_plain_cards(
-    builder: ContentBuilder,
-    parent,
-    html: str,
-) -> str:
-    html = html.strip()
-    if not html or 'announcement-banner' not in html:
-        return html
-    soup = BeautifulSoup(f'<div data-nairr-announce-root>{html}</div>', 'lxml')
-    root = soup.select_one('div[data-nairr-announce-root]')
-    if not root:
-        return html
-    banner_inners: list[str] = []
-    for node in list(root.select('div.announcement-banner')):
-        banner_inners.append(node.decode_contents().strip())
-        node.decompose()
-    if banner_inners:
-        _emit_announcement_banner_plain_cards(builder, parent, banner_inners)
-    return root.decode_contents().strip()
 
 
 def _extract_accordion_controls(soup: BeautifulSoup) -> tuple[str | None, str | None]:
