@@ -532,8 +532,8 @@ def _home_items_grid(section):
     return section.select_one('div.items-grid')
 
 
-def _home_opportunities_banner_alert_html(banner) -> str:
-    """Joomla ``div.banner`` (icon + ``div.content``) → Bootstrap 4 alert."""
+def _home_opportunities_banner_body_html(banner) -> str:
+    """Joomla ``div.banner`` (icon + ``div.content``) → alert body HTML only."""
     content = banner.select_one('div.content')
     if content:
         inner = _prepare_html(content.decode_contents().strip())
@@ -547,9 +547,23 @@ def _home_opportunities_banner_alert_html(banner) -> str:
         for node in root.select('div.content'):
             node.unwrap()
         inner = _prepare_html(root.decode_contents().strip())
-    if not inner:
-        return ''
-    return f'<div class="alert alert-info" role="alert">{inner}</div>'
+    return inner or ''
+
+
+def _home_opportunity_banner_nodes(inner, grid) -> list:
+    if not inner or not grid:
+        return []
+    nodes = []
+    for child in inner.children:
+        if child == grid:
+            break
+        name = getattr(child, 'name', None)
+        if not name:
+            continue
+        classes = child.get('class') or []
+        if name == 'div' and 'banner' in classes:
+            nodes.append(child)
+    return nodes
 
 
 def _home_section_preamble_child_html(child) -> str | None:
@@ -558,11 +572,14 @@ def _home_section_preamble_child_html(child) -> str | None:
         return None
     classes = child.get('class') or []
     if name == 'div' and 'banner' in classes:
-        return _home_opportunities_banner_alert_html(child)
+        body = _home_opportunities_banner_body_html(child)
+        if not body:
+            return None
+        return f'<div class="alert alert-info" role="alert">{body}</div>'
     return str(child)
 
 
-def _home_section_inner_preamble(inner, grid) -> str | None:
+def _home_section_inner_preamble(inner, grid, *, skip_banners: bool = False) -> str | None:
     """Heading, banners, and other markup in ``div.inner`` before the card grid."""
     if not inner or not grid:
         return None
@@ -570,6 +587,9 @@ def _home_section_inner_preamble(inner, grid) -> str | None:
     for child in inner.children:
         if child == grid:
             break
+        name = getattr(child, 'name', None)
+        if skip_banners and name == 'div' and 'banner' in (child.get('class') or []):
+            continue
         chunk = _home_section_preamble_child_html(child)
         if chunk:
             parts.append(chunk)
@@ -700,10 +720,15 @@ def _emit_home_shaded_card_section(
         container_type,
         label=nairr_section_label_from_home_section(section),
     )
-    preamble = _home_section_inner_preamble(inner, grid)
+    opportunities = _is_home_opportunities_section(section)
+    preamble = _home_section_inner_preamble(inner, grid, skip_banners=opportunities)
     if preamble:
         builder.add_text(container, preamble)
-    opportunities = _is_home_opportunities_section(section)
+    if opportunities:
+        for banner in _home_opportunity_banner_nodes(inner, grid):
+            body = _home_opportunities_banner_body_html(banner)
+            if body:
+                builder.add_admonition_alert(container, body, alert_context='secondary')
     if grid:
         row = builder.add_row(container)
         for item in grid.find_all('div', recursive=False):
