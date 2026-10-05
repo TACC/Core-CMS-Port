@@ -17,9 +17,9 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 - [ ] `getting-started`
 - [ ] `about/secure`
 - [ ] `opportunities/startup-project`
-- [ ] `opportunities/allocations` (sidebar_article)
+- [ ] `opportunities/allocations` (article_announcement_column)
 - [ ] `opportunities/education-call`
-- [ ] `opportunities/deep-partnerships` (sidebar_article)
+- [ ] `opportunities/deep-partnerships` (article_announcement_column)
 - [ ] `pilotresources`
 - [ ] `opportunities/how-review-matching-works`
 - [ ] `opportunities/speaker-request`

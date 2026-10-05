@@ -91,6 +91,10 @@ class Command(BaseCommand):
                 raise CommandError(f'Unknown page slug: {options["page"]!r}')
             specs = page_registry.expand_specs_with_ancestors([spec])
 
+        replace_page_slug = None
+        if options['page'] is not None:
+            replace_page_slug = options['page'].strip('/') or 'home'
+
         page_by_slug = {}
         generated_container = None
         if not options['dry_run']:
@@ -121,7 +125,9 @@ class Command(BaseCommand):
                 )
                 continue
 
-            if options['replace']:
+            if options['replace'] and self._replace_deletes_draft(
+                spec, replace_page_slug=replace_page_slug
+            ):
                 self._delete_drafts(reverse_id)
 
             existing = Page.objects.drafts().filter(reverse_id=reverse_id).first()
@@ -419,6 +425,14 @@ class Command(BaseCommand):
         if generated_container is not None:
             return generated_container
         return self._get_generated_container(page_by_slug, page_registry)
+
+    def _replace_deletes_draft(self, spec, *, replace_page_slug: str | None) -> bool:
+        """With ``--page``, only delete the target page—not ancestor section folders (and their siblings)."""
+        if replace_page_slug is None:
+            return True
+        if replace_page_slug == 'home':
+            return spec.pattern == 'home'
+        return spec.slug == replace_page_slug
 
     def _delete_drafts(self, reverse_id):
         removed = 0

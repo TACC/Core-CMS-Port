@@ -229,7 +229,7 @@ def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str 
     add_article_text_plugins(builder, parent, html, page_slug=page_slug)
 
 
-def build_sidebar_article(
+def build_article_announcement_column(
     builder: ContentBuilder,
     parent,
     html: str,
