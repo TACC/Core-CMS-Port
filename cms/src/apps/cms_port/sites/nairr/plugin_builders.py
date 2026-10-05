@@ -324,9 +324,12 @@ def _emit_announcement_banner_plain_cards(
         body_html = _prepare_html(body_html)
         if not body_html or not BeautifulSoup(body_html, 'lxml').get_text(strip=True):
             continue
-        row = builder.add_row(layout_parent)
-        col = builder.add_column(row, xs_col=12)
-        card = builder.add_card_plain_text(col, body_html)
+        slot = builder.add_section(
+            layout_parent,
+            MUTED_SECTION,
+            tag_type='section',
+        )
+        card = builder.add_card_plain_text(slot, body_html)
         if cta and cta['url']:
             builder.add_button_link(
                 card,
