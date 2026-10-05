@@ -5,6 +5,10 @@ Port of NAIRR Pilot (Joomla at [nairrpilot.org](https://nairrpilot.org)) into Co
 > [!IMPORTANT]
 > **TODO:** `../cms/src/apps/cms_port/sites/nairr/TODO.md`
 
+## Editor review docs
+
+To export scraped pages to Google Docs for human markup, see [editor-docs.md](./editor-docs.md).
+
 ## Settings
 
 Local instances take `settings_custom.py` from the shared [`cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py) (see [AGENTS.md](../AGENTS.md#git-worktrees-and-docker)). It must contain:

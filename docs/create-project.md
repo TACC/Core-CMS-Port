@@ -60,6 +60,8 @@
     docker exec core_cms python manage.py create_pages --site <site_id> --page <page-slug> --replace
     ```
 
+3. **Editor Google Docs** (optional): see [editor-docs.md](./editor-docs.md).
+
 ### Custom Processing
 
 - Site-specific code: `cms/src/apps/cms_port/sites/<site_id>/`
