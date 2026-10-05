@@ -205,6 +205,9 @@ def add_article_text_plugins(
     """Text plugins in Section grid wrappers under the page root Container."""
     if not html or not html.strip():
         return
+    html = _strip_joomla_banners_to_alerts(builder, parent, html)
+    if not html.strip():
+        return
     pending_h1: str | None = None
 
     def _flush_pending_h1_section() -> None:
@@ -532,7 +535,15 @@ def _home_items_grid(section):
     return section.select_one('div.items-grid')
 
 
-def _home_opportunities_banner_body_html(banner) -> str:
+def _is_joomla_icon_banner(node) -> bool:
+    """``div.banner`` (home opportunities, etc.), not ``div.announcement-banner``."""
+    if getattr(node, 'name', None) != 'div':
+        return False
+    classes = node.get('class') or []
+    return 'banner' in classes and 'announcement-banner' not in classes
+
+
+def _joomla_banner_body_html(banner) -> str:
     """Joomla ``div.banner`` (icon + ``div.content``) → alert body HTML only."""
     content = banner.select_one('div.content')
     if content:
@@ -550,46 +561,62 @@ def _home_opportunities_banner_body_html(banner) -> str:
     return inner or ''
 
 
-def _home_opportunity_banner_nodes(inner, grid) -> list:
-    if not inner or not grid:
+def _banner_nodes_before(inner, stop_node) -> list:
+    """Direct children of ``inner`` before ``stop_node`` that are Joomla ``div.banner``."""
+    if not inner or not stop_node:
         return []
     nodes = []
     for child in inner.children:
-        if child == grid:
+        if child == stop_node:
             break
-        name = getattr(child, 'name', None)
-        if not name:
-            continue
-        classes = child.get('class') or []
-        if name == 'div' and 'banner' in classes:
+        if _is_joomla_icon_banner(child):
             nodes.append(child)
     return nodes
+
+
+def _emit_joomla_banner_alerts(builder: ContentBuilder, parent, banner_nodes) -> None:
+    for banner in banner_nodes:
+        body = _joomla_banner_body_html(banner)
+        if body:
+            builder.add_admonition_alert(parent, body, alert_context='secondary')
+
+
+def _strip_joomla_banners_to_alerts(builder: ContentBuilder, parent, html: str) -> str:
+    """Remove every ``div.banner`` from ``html``, emitting Admonition alerts on ``parent`` first."""
+    html = html.strip()
+    if not html or 'banner' not in html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-banner-root>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-banner-root]')
+    if not root:
+        return html
+    for node in list(root.find_all('div', class_=lambda c: c and 'banner' in c)):
+        if not _is_joomla_icon_banner(node):
+            continue
+        body = _joomla_banner_body_html(node)
+        if body:
+            builder.add_admonition_alert(parent, body, alert_context='secondary')
+        node.decompose()
+    return root.decode_contents().strip()
 
 
 def _home_section_preamble_child_html(child) -> str | None:
     name = getattr(child, 'name', None)
     if not name:
         return None
-    classes = child.get('class') or []
-    if name == 'div' and 'banner' in classes:
-        body = _home_opportunities_banner_body_html(child)
-        if not body:
-            return None
-        return f'<div class="alert alert-info" role="alert">{body}</div>'
+    if _is_joomla_icon_banner(child):
+        return None
     return str(child)
 
 
-def _home_section_inner_preamble(inner, grid, *, skip_banners: bool = False) -> str | None:
-    """Heading, banners, and other markup in ``div.inner`` before the card grid."""
+def _home_section_inner_preamble(inner, grid) -> str | None:
+    """Heading and other markup in ``div.inner`` before the card grid (not ``div.banner``)."""
     if not inner or not grid:
         return None
     parts: list[str] = []
     for child in inner.children:
         if child == grid:
             break
-        name = getattr(child, 'name', None)
-        if skip_banners and name == 'div' and 'banner' in (child.get('class') or []):
-            continue
         chunk = _home_section_preamble_child_html(child)
         if chunk:
             parts.append(chunk)
@@ -721,14 +748,10 @@ def _emit_home_shaded_card_section(
         label=nairr_section_label_from_home_section(section),
     )
     opportunities = _is_home_opportunities_section(section)
-    preamble = _home_section_inner_preamble(inner, grid, skip_banners=opportunities)
+    preamble = _home_section_inner_preamble(inner, grid)
     if preamble:
         builder.add_text(container, preamble)
-    if opportunities:
-        for banner in _home_opportunity_banner_nodes(inner, grid):
-            body = _home_opportunities_banner_body_html(banner)
-            if body:
-                builder.add_admonition_alert(container, body, alert_context='secondary')
+    _emit_joomla_banner_alerts(builder, container, _banner_nodes_before(inner, grid))
     if grid:
         row = builder.add_row(container)
         for item in grid.find_all('div', recursive=False):
@@ -777,6 +800,7 @@ def _emit_home_highlights_section(
     preamble = _home_section_inner_preamble(inner, section_grid)
     if preamble:
         builder.add_text(container, preamble)
+    _emit_joomla_banner_alerts(builder, container, _banner_nodes_before(inner, section_grid))
     if highlights_grid:
         row = builder.add_row(container)
         for link in highlights_grid.select('a'):

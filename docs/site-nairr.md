@@ -50,7 +50,7 @@ Joomla uses two banner patterns; import maps them to different plugins:
 
 | Scrape markup | Typical location | CMS pattern |
 | --- | --- | --- |
-| `div.banner` | Home **Current Opportunities** (`section.opportunities`), before the card grid | Bootstrap 4 **Alert** (Admonition, secondary) — `add_admonition_alert` |
+| `div.banner` | Any page (e.g. home **Current Opportunities** before `div.items-grid`) | Bootstrap 4 **Alert** (Admonition, secondary) — `add_admonition_alert` |
 | `div.announcement-banner` | Article / FAQ / sidebar pages (e.g. opportunities calls, `help/faq`, `news/events`) | TACC Site **Card**, **Standard** skin — `add_card_standard_text`; CTA via `add_button_link` |
 
 ## Static Assets
