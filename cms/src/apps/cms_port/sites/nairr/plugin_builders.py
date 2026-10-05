@@ -205,6 +205,7 @@ def add_article_text_plugins(
     """Text plugins in Section grid wrappers under the page root Container."""
     if not html or not html.strip():
         return
+    html = _strip_announcement_banners_to_plain_cards(builder, parent, html)
     html = _strip_joomla_banners_to_alerts(builder, parent, html)
     if not html.strip():
         return
@@ -309,6 +310,50 @@ def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
     return body_html, cta
 
 
+def _emit_announcement_banner_plain_cards(
+    builder: ContentBuilder,
+    parent,
+    banner_inners: list[str],
+) -> None:
+    """``div.announcement-banner`` → full-width Plain Card (+ optional Button CTA)."""
+    for banner_html in dedupe_banners(banner_inners):
+        body_html, cta = _extract_banner_cta(banner_html)
+        body_html = _prepare_html(body_html)
+        if not body_html or not BeautifulSoup(body_html, 'lxml').get_text(strip=True):
+            continue
+        row = builder.add_row(parent)
+        col = builder.add_column(row, xs_col=12)
+        card = builder.add_card_plain_text(col, body_html)
+        if cta and cta['url']:
+            builder.add_button_link(
+                card,
+                name=cta['name'],
+                url=cta['url'],
+                link_target=cta['target'],
+            )
+
+
+def _strip_announcement_banners_to_plain_cards(
+    builder: ContentBuilder,
+    parent,
+    html: str,
+) -> str:
+    html = html.strip()
+    if not html or 'announcement-banner' not in html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-announce-root>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-announce-root]')
+    if not root:
+        return html
+    banner_inners: list[str] = []
+    for node in list(root.select('div.announcement-banner')):
+        banner_inners.append(node.decode_contents().strip())
+        node.decompose()
+    if banner_inners:
+        _emit_announcement_banner_plain_cards(builder, parent, banner_inners)
+    return root.decode_contents().strip()
+
+
 def _extract_accordion_controls(soup: BeautifulSoup) -> tuple[str | None, str | None]:
     """Pull 'Expand All' / 'Collapse All' link text from the FAQ page, if present."""
     controls = soup.select_one('.all-hz-accordions-controls')
@@ -340,13 +385,7 @@ def build_faq(builder: ContentBuilder, parent, html: str) -> None:
             label='Announcements',
         )
 
-    for banner_html in dedupe_banners(banners):
-        body_html, cta = _extract_banner_cta(banner_html)
-        banner_row = builder.add_row(banner_parent)
-        banner_col = builder.add_column(banner_row, xs_col=12)
-        card = builder.add_card_plain_text(banner_col, body_html)
-        if cta and cta['url']:
-            builder.add_button_link(card, name=cta['name'], url=cta['url'], link_target=cta['target'])
+    _emit_announcement_banner_plain_cards(builder, banner_parent, banners)
 
     # Scope wrapper: JS (faq-accordion.js) uses `.nairr-faq details` for Expand/Collapse All.
     wrapper = builder.add_section(
