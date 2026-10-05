@@ -44,6 +44,15 @@ Scraped `home.html` section classes don't always match their headings:
 | What's Happening | `section.news` | `_emit_home_shaded_card_section` |
 | Leadership, Partners, and Contributors | `section.happenings` | `_emit_home_happenings_section` |
 
+### Banners
+
+Joomla uses two banner patterns; import maps them to different plugins:
+
+| Scrape markup | Typical location | CMS pattern |
+| --- | --- | --- |
+| `div.banner` | Home **Current Opportunities** (`section.opportunities`), before the card grid | Bootstrap 4 **Alert** (Admonition, secondary) — `add_admonition_alert` |
+| `div.announcement-banner` | Article / FAQ / sidebar pages (e.g. opportunities calls, `help/faq`, `news/events`) | TACC Site **Card**, **Standard** skin — `add_card_standard_text`; CTA via `add_button_link` |
+
 ## Static Assets
 
 Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
