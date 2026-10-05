@@ -288,31 +288,6 @@ def build_article(builder: ContentBuilder, parent, html: str, *, page_slug: str 
     add_article_text_plugins(builder, parent, html, page_slug=page_slug)
 
 
-def build_article_announcement_column(
-    builder: ContentBuilder,
-    parent,
-    html: str,
-    *,
-    page_slug: str | None = None,
-) -> None:
-    soup = BeautifulSoup(html, 'lxml')
-    banners = []
-    for node in soup.select('div.announcement-banner'):
-        banners.append(node.decode_contents().strip())
-        node.decompose()
-    body_html = soup.decode_contents().strip()
-
-    row = builder.add_row(parent)
-    # xs_col=12 stacks main/side full-width on narrow screens; lg_col splits
-    # them side by side from the lg breakpoint up (see 9db8570d).
-    main_col = builder.add_column(row, xs_col=12, lg_col=8)
-    if body_html:
-        add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
-    if banners:
-        side_col = builder.add_column(row, xs_col=12, lg_col=4)
-        _emit_announcement_banner_plain_cards(builder, side_col, banners, dedupe=True)
-
-
 def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
     """Pull the ``div.controls > a`` call-to-action out of a banner, for a real Button plugin."""
     soup = BeautifulSoup(f'<div data-nairr-banner>{banner_html}</div>', 'lxml')

@@ -86,7 +86,7 @@ PAGE_SPECS = [
         'Research Resources',
         'standard.html',
         'opportunities/allocations',
-        'article_announcement_column',
+        'article',
         parent_slug='opportunities',
     ),
     PageSpec(
@@ -102,7 +102,7 @@ PAGE_SPECS = [
         'Deep Partnerships',
         'standard.html',
         'opportunities/deep-partnerships',
-        'article_announcement_column',
+        'article',
         parent_slug='opportunities',
     ),
     PageSpec(
