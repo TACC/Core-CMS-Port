@@ -186,13 +186,20 @@ def _add_article_text_plugins_from_html(
     html: str,
     *,
     page_slug: str | None = None,
-) -> None:
+):
+    """Return the last TACC Site Section plugin created (for inline announcement cards)."""
     if not html or not html.strip():
-        return
+        return None
     html = _strip_joomla_banners_to_alerts(builder, parent, html)
     if not html.strip():
-        return
+        return None
     pending_h1: str | None = None
+    last_section = None
+
+    def _note_section(section) -> None:
+        nonlocal last_section
+        if section is not None:
+            last_section = section
 
     def _flush_pending_h1_section() -> None:
         nonlocal pending_h1
@@ -205,6 +212,7 @@ def _add_article_text_plugins_from_html(
             label=nairr_section_label_from_chunk(pending_h1),
         )
         builder.add_text(section, pending_h1)
+        _note_section(section)
         pending_h1 = None
 
     for chunk in split_html_for_cms_text_plugins(html):
@@ -235,11 +243,19 @@ def _add_article_text_plugins_from_html(
                 pending_h1 = None
             body_parts.append(chunk)
             builder.add_text(section, ''.join(body_parts))
+            _note_section(section)
         else:
             _flush_pending_h1_section()
-            builder.add_text_in_container(parent, chunk)
+            section = builder.add_section(
+                parent,
+                MUTED_SECTION,
+                tag_type='div',
+            )
+            builder.add_text(section, chunk)
+            _note_section(section)
 
     _flush_pending_h1_section()
+    return last_section
 
 
 def _import_article_with_announcement_banners_in_order(
@@ -260,12 +276,14 @@ def _import_article_with_announcement_banners_in_order(
         _add_article_text_plugins_from_html(builder, parent, html, page_slug=page_slug)
         return
     chunk_parts: list[str] = []
+    last_content_section = None
 
     def flush_article_html() -> None:
+        nonlocal last_content_section
         chunk_html = ''.join(chunk_parts).strip()
         chunk_parts.clear()
         if chunk_html:
-            _add_article_text_plugins_from_html(
+            last_content_section = _add_article_text_plugins_from_html(
                 builder, parent, chunk_html, page_slug=page_slug
             )
 
@@ -277,6 +295,7 @@ def _import_article_with_announcement_banners_in_order(
                 parent,
                 [child.decode_contents().strip()],
                 dedupe=False,
+                section_target=last_content_section,
             )
             continue
         if getattr(child, 'name', None) or str(child).strip():
@@ -315,8 +334,9 @@ def _emit_announcement_banner_plain_cards(
     banner_inners: list[str],
     *,
     dedupe: bool = True,
+    section_target=None,
 ) -> None:
-    """``div.announcement-banner`` → full-width Plain Card (+ optional Button CTA)."""
+    """``div.announcement-banner`` → Plain Card (+ optional Button CTA) inside a Section."""
     layout_parent = builder._content_parent(parent)
     inners = dedupe_banners(banner_inners) if dedupe else banner_inners
     for banner_html in inners:
@@ -324,12 +344,16 @@ def _emit_announcement_banner_plain_cards(
         body_html = _prepare_html(body_html)
         if not body_html or not BeautifulSoup(body_html, 'lxml').get_text(strip=True):
             continue
-        slot = builder.add_section(
-            layout_parent,
-            MUTED_SECTION,
-            tag_type='section',
-        )
-        card = builder.add_card_plain_text(slot, body_html)
+        card_parent = section_target
+        if card_parent is None and getattr(layout_parent, 'plugin_type', None) == 'TaccsiteSectionPlugin':
+            card_parent = layout_parent
+        if card_parent is None:
+            card_parent = builder.add_section(
+                layout_parent,
+                MUTED_SECTION,
+                tag_type='section',
+            )
+        card = builder.add_card_plain_text(card_parent, body_html)
         if cta and cta['url']:
             builder.add_button_link(
                 card,
