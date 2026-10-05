@@ -1,4 +1,4 @@
-"""Refresh or clear generated page content from the CMS page tree."""
+"""Scrape, refresh, or clear generated page content from the CMS page tree."""
 
 from __future__ import annotations
 
@@ -27,6 +27,12 @@ class PortPage:
 class Result:
     refreshed: list = field(default_factory=list)
     missing: list = field(default_factory=list)
+    failed: list = field(default_factory=list)
+
+
+@dataclass
+class ScrapeResult:
+    scraped: list = field(default_factory=list)
     failed: list = field(default_factory=list)
 
 
@@ -71,19 +77,43 @@ def clear(page, language=None, site_id=None):
     _clear_content(page.get_draft_object(), language or settings.LANGUAGE_CODE)
 
 
-def target_pages(port, include_children, site_id=None):
-    """Existing draft pages whose content ``refresh`` would replace."""
-    registry = load_site(site_id).page_registry
+def _specs_in_scope(port, include_children):
     specs = [] if port.spec is None else [port.spec]
     if include_children:
         specs.extend(port.descendants)
-    reverse_ids = [
-        registry.reverse_id_for_slug(spec.slug)
-        for spec in specs
-        if spec.pattern not in NO_CONTENT_PATTERNS
-    ]
+    return [spec for spec in specs if spec.pattern not in NO_CONTENT_PATTERNS]
+
+
+def target_pages(port, include_children, site_id=None):
+    """Existing draft pages whose content ``refresh`` would replace."""
+    registry = load_site(site_id).page_registry
+    specs = _specs_in_scope(port, include_children)
+    reverse_ids = [registry.reverse_id_for_slug(spec.slug) for spec in specs]
     pages = Page.objects.drafts().filter(reverse_id__in=reverse_ids)
     return sorted(pages, key=lambda page: page.node.path)
+
+
+def scrape(port, include_children, site_id=None):
+    """Fetch remote HTML into scrape files. Does not change CMS content."""
+    site = load_site(site_id)
+    scrape_root = site.scrape_lib.scrape_root(settings)
+    scrape_settings = portal_scrape_entry(site_id or default_site_id())
+
+    result = ScrapeResult()
+    for spec in _specs_in_scope(port, include_children):
+        try:
+            site.scrape_lib.scrape_one(
+                'home' if spec.pattern == 'home' else spec.scrape_path,
+                root=scrape_root,
+                base=site.scrape_lib.base_url(settings),
+                force=True,
+                crawl_delay=scrape_settings.crawl_delay,
+            )
+        except Exception as exc:
+            result.failed.append(f'{_label(spec)}: {exc}')
+            continue
+        result.scraped.append(_label(spec))
+    return result
 
 
 def refresh(port, include_children, language=None, site_id=None):
@@ -94,16 +124,8 @@ def refresh(port, include_children, language=None, site_id=None):
     scrape_root = site.scrape_lib.scrape_root(settings)
     scrape_settings = portal_scrape_entry(site_id or default_site_id())
 
-    specs = []
-    if port.spec is not None:
-        specs.append(port.spec)
-    if include_children:
-        specs.extend(port.descendants)
-
     result = Result()
-    for spec in specs:
-        if spec.pattern in NO_CONTENT_PATTERNS:
-            continue
+    for spec in _specs_in_scope(port, include_children):
         draft = Page.objects.drafts().filter(
             reverse_id=registry.reverse_id_for_slug(spec.slug)
         ).first()

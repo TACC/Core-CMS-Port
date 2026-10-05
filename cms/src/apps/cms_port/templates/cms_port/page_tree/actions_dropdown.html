@@ -12,11 +12,25 @@
                 </a>
             </li>
         {% endif %}
+        {% if not port.is_root %}
+            <li>
+                <a href="{% url opts|admin_urlname:'port_scrape' page.id %}">
+                    <span class="cms-icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.125em"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+                    <span>Scrape page…</span>
+                </a>
+            </li>
+        {% endif %}
         {% if port.descendants %}
             <li>
                 <a href="{% url opts|admin_urlname:'port_refresh' page.id %}?children=1">
                     <span class="cms-icon cms-icon-sitemap"></span>
                     <span>Regenerate children…</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url opts|admin_urlname:'port_scrape' page.id %}?children=1">
+                    <span class="cms-icon cms-icon-sitemap"></span>
+                    <span>Scrape children…</span>
                 </a>
             </li>
         {% endif %}
