@@ -317,13 +317,14 @@ def _emit_announcement_banner_plain_cards(
     dedupe: bool = True,
 ) -> None:
     """``div.announcement-banner`` → full-width Plain Card (+ optional Button CTA)."""
+    layout_parent = builder._content_parent(parent)
     inners = dedupe_banners(banner_inners) if dedupe else banner_inners
     for banner_html in inners:
         body_html, cta = _extract_banner_cta(banner_html)
         body_html = _prepare_html(body_html)
         if not body_html or not BeautifulSoup(body_html, 'lxml').get_text(strip=True):
             continue
-        row = builder.add_row(parent)
+        row = builder.add_row(layout_parent)
         col = builder.add_column(row, xs_col=12)
         card = builder.add_card_plain_text(col, body_html)
         if cta and cta['url']:
