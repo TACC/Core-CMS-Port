@@ -41,18 +41,6 @@ def extract_announcement_banners(html: str) -> list[str]:
     return banners
 
 
-def dedupe_banner_html(banners: list[str]) -> str | None:
-    if not banners:
-        return None
-    seen = set()
-    for body in banners:
-        key = BeautifulSoup(body, 'lxml').get_text(' ', strip=True)
-        if key and key not in seen:
-            seen.add(key)
-            return body
-    return banners[0]
-
-
 def dedupe_banners(banners: list[str]) -> list[str]:
     """Keep every banner, but drop exact-text repeats."""
     seen = set()
@@ -254,7 +242,6 @@ def build_sidebar_article(
         banners.append(node.decode_contents().strip())
         node.decompose()
     body_html = soup.decode_contents().strip()
-    banner_html = dedupe_banner_html(banners)
 
     row = builder.add_row(parent)
     # xs_col=12 stacks main/side full-width on narrow screens; lg_col splits
@@ -262,9 +249,9 @@ def build_sidebar_article(
     main_col = builder.add_column(row, xs_col=12, lg_col=8)
     if body_html:
         add_article_text_plugins(builder, main_col, body_html, page_slug=page_slug)
-    if banner_html:
+    if banners:
         side_col = builder.add_column(row, xs_col=12, lg_col=4)
-        builder.add_card_plain_text(side_col, banner_html)
+        _emit_announcement_banner_plain_cards(builder, side_col, banners)
 
 
 def _extract_banner_cta(banner_html: str) -> tuple[str, dict | None]:
