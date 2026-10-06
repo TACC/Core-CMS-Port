@@ -131,11 +131,27 @@ class ContentBuilder:
             )
 
     def _validate_layout_container_under_page_root(self, parent, container_type: str) -> None:
+        self._reject_non_section_child_of_content_root(parent)
+
+    def _reject_non_section_child_of_content_root(self, parent) -> None:
+        """Only ``TaccsiteSectionPlugin`` may sit directly under the page content container."""
+        if not self.enforce_placeholder_root_grid:
+            return
         if self._is_direct_child_of_page_root(parent):
             raise PlaceholderRootGridContainerError(
-                'Bootstrap4 grid Container plugins are not allowed as direct children of the page root; '
-                'use add_section().'
+                'Only TACC Site Section plugins are allowed as direct children of the page '
+                'content container; use add_section().'
             )
+
+    def _reject_placeholder_root_layout_parent(self, parent) -> None:
+        if not self.enforce_placeholder_root_grid:
+            return
+        if parent is None:
+            raise PlaceholderRootGridContainerError(
+                'Layout plugins at Content placeholder root are not allowed; '
+                'use add_section() on the page content container.'
+            )
+        self._reject_non_section_child_of_content_root(parent)
 
     def add_text(self, parent, html: str, *, allow_root: bool = False):
         if (
@@ -147,6 +163,7 @@ class ContentBuilder:
                 'Text at Content placeholder root is not allowed; '
                 'use add_text_in_container() or nest under a container, column, or card.'
             )
+        self._reject_non_section_child_of_content_root(parent)
         return add_plugin(
             self.placeholder,
             TextPlugin,
@@ -178,6 +195,7 @@ class ContentBuilder:
     def add_style(self, parent, class_name: str, tag_type='div'):
         if parent is None:
             parent = self._content_parent(parent)
+        self._reject_non_section_child_of_content_root(parent)
         return add_plugin(
             self.placeholder,
             StylePlugin,
@@ -244,6 +262,7 @@ class ContentBuilder:
         )
 
     def add_row(self, parent, horizontal_alignment=''):
+        self._reject_placeholder_root_layout_parent(parent)
         return add_plugin(
             self.placeholder,
             Bootstrap4GridRowPlugin,
@@ -254,6 +273,7 @@ class ContentBuilder:
         )
 
     def add_column(self, parent, xs_col=12, sm_col=None, md_col=None, lg_col=None, xl_col=None, column_type='col'):
+        self._reject_placeholder_root_layout_parent(parent)
         return add_plugin(
             self.placeholder,
             Bootstrap4GridColumnPlugin,
@@ -279,6 +299,7 @@ class ContentBuilder:
         additional_classes: str = '',
     ):
         """TACC Site **Card** plugin (``TaccsiteCardPlugin``), not generic Style."""
+        self._reject_non_section_child_of_content_root(parent)
         kwargs = {
             'class_name': skin,
             'template': layout,
@@ -359,6 +380,7 @@ class ContentBuilder:
         create_missing_page: bool = False,
     ):
         """Whole-card link via Bootstrap4 Link + ``c-card`` classes (until Card plugin supports href)."""
+        self._reject_non_section_child_of_content_root(parent)
         link_target_kwargs = self._link_target_kwargs(url, create_missing_page)
         plugin = add_plugin(
             self.placeholder,
@@ -411,6 +433,7 @@ class ContentBuilder:
 
         if not html or not str(html).strip():
             return None
+        self._reject_non_section_child_of_content_root(parent)
         alert = add_plugin(
             self.placeholder,
             'Bootstrap4AlertsPlugin',
@@ -432,6 +455,7 @@ class ContentBuilder:
         link_context is required for a real ``.btn`` class to render at all -
         Bootstrap4LinkPlugin.render() only adds it inside `if instance.link_context`.
         """
+        self._reject_non_section_child_of_content_root(parent)
         link_target_kwargs = self._link_target_kwargs(url, create_missing_page)
         plugin = add_plugin(
             self.placeholder,
@@ -462,6 +486,7 @@ class ContentBuilder:
         )
         if created:
             snippet.full_clean()
+        self._reject_non_section_child_of_content_root(parent)
         return add_plugin(
             self.placeholder,
             SnippetPlugin,
