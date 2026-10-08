@@ -1,0 +1,50 @@
+# Copy to docker-compose.agent-<port>.yml (gitignored; keep in main checkout under cms/).
+# Set every /absolute/path/... below to your checkout (worktree or main cms/ tree).
+# docker compose -f docker-compose.agent-8005.yml -p cms8005 up -d --build
+
+services:
+  cms:
+    build:
+      context: /absolute/path/to/Core-CMS-Port-worktree/cms
+      dockerfile: Dockerfile
+    ports:
+      - 127.0.0.1:8005:8000
+    entrypoint: ["/code/docker-merge-settings.sh"]
+    command: ["python3", "manage.py", "runserver", "0.0.0.0:8000"]
+    container_name: core_cms_8005
+    hostname: core_cms_8005
+    volumes:
+      - core_cms_8005_settings_data:/code/taccsite_cms/settings
+      - /absolute/path/to/cms.settings_custom.py:/code/taccsite_cms/settings/settings_custom.py:ro
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/src/taccsite_cms/settings:/code/taccsite_cms/settings_from_host:ro
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/bin/docker-merge-settings.sh:/code/docker-merge-settings.sh:ro
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/src/apps:/code/apps
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/src/taccsite_custom:/code/taccsite_custom
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/src/taccsite_cms/custom_app_settings.py:/code/taccsite_cms/custom_app_settings.py
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/src/taccsite_cms/urls_custom.py:/code/taccsite_cms/urls_custom.py
+      - /absolute/path/to/Core-CMS-Port-worktree/cms/scraped:/code/scraped
+    networks:
+      - core_cms_8005_net
+
+  postgres:
+    image: postgres:14.9
+    environment:
+      - POSTGRES_PASSWORD=taccforever
+      - POSTGRES_USER=postgresadmin
+      - POSTGRES_DB=taccsite
+      - PGDATA=/var/lib/postgresql/data/taccsite
+    volumes:
+      - core_cms_8005_postgres_data:/var/lib/postgresql/data
+    hostname: core_cms_postgres_8005
+    container_name: core_cms_postgres_8005
+    networks:
+      core_cms_8005_net:
+        aliases:
+          - core_cms_postgres
+
+volumes:
+  core_cms_8005_settings_data:
+  core_cms_8005_postgres_data:
+
+networks:
+  core_cms_8005_net:
