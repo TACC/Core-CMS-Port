@@ -50,7 +50,7 @@ Scrape third-party pages, then import into django CMS.
 
 #### Git Worktrees and Docker
 
-Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker). Port agent instances: copy [`cms/docker-compose.agent.example.yml`](cms/docker-compose.agent.example.yml) to `cms/docker-compose.agent-<port>.yml`.
+Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker).
 
 #### Section Labels
 
