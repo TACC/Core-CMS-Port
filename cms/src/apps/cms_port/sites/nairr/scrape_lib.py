@@ -34,9 +34,7 @@ def rewrite_lead_to_annotation(html: str) -> str:
     return root.decode_contents().strip()
 
 STRIP_SELECTORS = (
-    '#resource_catalog_app',
     '#app',
-    'script',
     'style',
     'noscript',
 )
@@ -74,10 +72,25 @@ def fetch_html(scrape_path: str, *, base: str, session: requests.Session) -> str
     return response.text
 
 
+# Keep ``renderCatalog`` markup in scrape files (README:
+# https://github.com/access-ci-org/resource-catalog/blob/main/README.md).
+def _is_resource_catalog_module_script(node) -> bool:
+    if getattr(node, 'name', None) != 'script':
+        return False
+    if node.get('type') != 'module':
+        return False
+    body = node.string or node.get_text() or ''
+    return 'renderCatalog' in body and '@xras/resource-catalog' in body
+
+
 def _remove_nodes(soup: BeautifulSoup) -> None:
     for selector in STRIP_SELECTORS:
         for node in soup.select(selector):
             node.decompose()
+    for script in soup.find_all('script'):
+        if _is_resource_catalog_module_script(script):
+            continue
+        script.decompose()
     for comment in soup.find_all(string=lambda t: isinstance(t, Comment)):
         comment.extract()
 
