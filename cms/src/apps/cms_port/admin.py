@@ -174,7 +174,3 @@ class PortPageAdmin(PageAdmin):
         page_actions.clear(page)
         messages.success(request, f'Deleted content of {page}.')
         return redirect(self.get_admin_url('changelist'))
-
-
-admin.site.unregister(Page)
-admin.site.register(Page, PortPageAdmin)
