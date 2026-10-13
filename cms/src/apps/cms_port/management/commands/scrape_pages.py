@@ -11,7 +11,7 @@ from apps.cms_port.site_loader import default_site_id, load_site, portal_scrape_
 
 
 class Command(BaseCommand):
-    help = 'Scrape pages into site scrape root (one page, --home, --tested, or --all).'
+    help = 'Scrape pages into site scrape root (--slug, --home, --tested, or --all).'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -20,8 +20,7 @@ class Command(BaseCommand):
             help='Port site package (default: PORTAL_SCRAPE_SITE or nairr)',
         )
         parser.add_argument(
-            'page',
-            nargs='?',
+            '--slug',
             help='Page slug (e.g. about/overview); omit with --all',
         )
         parser.add_argument(
@@ -57,8 +56,8 @@ class Command(BaseCommand):
         crawl_delay = scrape_settings.crawl_delay
         root.mkdir(parents=True, exist_ok=True)
 
-        if options['tested'] and options['page'] is not None:
-            raise CommandError('Use either a page slug or --tested, not both.')
+        if options['tested'] and options['slug'] is not None:
+            raise CommandError('Use either --slug or --tested, not both.')
 
         paths = []
         if options['all']:
@@ -76,16 +75,16 @@ class Command(BaseCommand):
                 path = 'home' if spec.pattern == 'home' else spec.scrape_path
                 if path not in paths:
                     paths.append(path)
-        elif options['page']:
-            spec = page_registry.spec_by_slug(options['page'])
+        elif options['slug']:
+            spec = page_registry.spec_by_slug(options['slug'])
             if spec and spec.pattern == 'home':
                 paths = ['home']
             elif spec:
                 paths = [spec.scrape_path]
             else:
-                paths = [options['page'].strip('/')]
+                paths = [options['slug'].strip('/')]
         else:
-            raise CommandError('Provide a page slug, --home, --tested, or --all')
+            raise CommandError('Provide --slug, --home, --tested, or --all')
 
         for scrape_path in paths:
             path = scrape_lib.scrape_one(

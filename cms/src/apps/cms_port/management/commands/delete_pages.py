@@ -19,7 +19,7 @@ class Command(BaseCommand):
             help='Port site package (default: PORTAL_SCRAPE_SITE or nairr)',
         )
         parser.add_argument(
-            '--page',
+            '--slug',
             help='Only this slug (e.g. about/overview or home)',
         )
         parser.add_argument(
@@ -34,10 +34,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        if options['tested'] and options['page'] is not None:
-            raise CommandError('Use either --page or --tested, not both.')
-        if not options['tested'] and options['page'] is None:
-            raise CommandError('Pass --page <slug> or --tested.')
+        if options['tested'] and options['slug'] is not None:
+            raise CommandError('Use either --slug or --tested, not both.')
+        if not options['tested'] and options['slug'] is None:
+            raise CommandError('Pass --slug <slug> or --tested.')
 
         site = load_site(options['site'])
         page_registry = site.page_registry
@@ -48,9 +48,9 @@ class Command(BaseCommand):
                 raise CommandError('This site page registry has no specs_for_tested().')
             specs = list(reversed(specs_for_tested()))
         else:
-            spec = page_registry.spec_by_slug(options['page'])
+            spec = page_registry.spec_by_slug(options['slug'])
             if not spec:
-                raise CommandError(f'Unknown page slug: {options["page"]!r}')
+                raise CommandError(f'Unknown page slug: {options["slug"]!r}')
             specs = list(
                 reversed(page_registry.expand_specs_with_ancestors([spec]))
             )

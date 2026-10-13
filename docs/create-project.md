@@ -52,12 +52,12 @@
 1. **Scrape**:
 
     ```sh
-    docker exec core_cms python manage.py scrape_pages --site <site_id> <page-slug> --force
+    docker exec core_cms python manage.py scrape_pages --site <site_id> --slug <page-slug> --force
     ```
 
 2. **Import**:
     ```sh
-    docker exec core_cms python manage.py create_pages --site <site_id> --page <page-slug> --replace
+    docker exec core_cms python manage.py create_pages --site <site_id> --slug <page-slug> --replace
     ```
 
 ### Custom Processing

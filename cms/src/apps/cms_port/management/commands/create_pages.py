@@ -34,7 +34,7 @@ class Command(BaseCommand):
             help='Port site package (default: PORTAL_SCRAPE_SITE or nairr)',
         )
         parser.add_argument(
-            '--page',
+            '--slug',
             help='Only this slug (e.g. about/overview or home)',
         )
         parser.add_argument(
@@ -79,21 +79,21 @@ class Command(BaseCommand):
 
         specs = import_pages.ordered_specs()
         if options['tested']:
-            if options['page'] is not None:
-                raise CommandError('Use either --page or --tested, not both.')
+            if options['slug'] is not None:
+                raise CommandError('Use either --slug or --tested, not both.')
             specs_for_tested = getattr(page_registry, 'specs_for_tested', None)
             if not specs_for_tested:
                 raise CommandError('This site page registry has no specs_for_tested().')
             specs = specs_for_tested()
-        elif options['page'] is not None:
-            spec = page_registry.spec_by_slug(options['page'])
+        elif options['slug'] is not None:
+            spec = page_registry.spec_by_slug(options['slug'])
             if not spec:
-                raise CommandError(f'Unknown page slug: {options["page"]!r}')
+                raise CommandError(f'Unknown page slug: {options["slug"]!r}')
             specs = page_registry.expand_specs_with_ancestors([spec])
 
         replace_page_slug = None
-        if options['page'] is not None:
-            replace_page_slug = options['page'].strip('/') or 'home'
+        if options['slug'] is not None:
+            replace_page_slug = options['slug'].strip('/') or 'home'
 
         page_by_slug = {}
         generated_container = None
@@ -427,7 +427,7 @@ class Command(BaseCommand):
         return self._get_generated_container(page_by_slug, page_registry)
 
     def _replace_deletes_draft(self, spec, *, replace_page_slug: str | None) -> bool:
-        """With ``--page``, only delete the target page—not ancestor section folders (and their siblings)."""
+        """With ``--slug``, only delete the target page—not ancestor section folders (and their siblings)."""
         if replace_page_slug is None:
             return True
         if replace_page_slug == 'home':
