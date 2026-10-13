@@ -167,7 +167,7 @@ PAGE_SPECS = [
         'Project Highlights',
         'standard.html',
         'projects/highlights',
-        'empty',
+        'blog',
         parent_slug='projects',
     ),
     PageSpec('news', 'News/Events', 'standard.html', '', 'section_parent'),
