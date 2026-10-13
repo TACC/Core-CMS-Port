@@ -20,6 +20,14 @@ from apps.cms_port.common.html_text import (
     prepare_article_html_chunk,
     split_html_for_cms_text_plugins,
 )
+from apps.cms_port.sites.nairr.resource_catalog_html import (
+    RESOURCE_CATALOG_SEGMENT,
+    split_html_at_resource_catalog,
+)
+from apps.cms_port.sites.nairr.resource_catalog_snippets import (
+    RESOURCE_CATALOG_README_URL,
+    resource_catalog_snippet_for_page,
+)
 from apps.cms_port.sites.nairr.scrape_lib import rewrite_lead_to_annotation
 from apps.cms_port.sites.nairr.section_label_shortcuts import (
     nairr_section_label_from_chunk,
@@ -30,6 +38,29 @@ from apps.cms_port.sites.nairr.section_label_shortcuts import (
 
 def _prepare_html(html: str) -> str:
     return rewrite_lead_to_annotation(prepare_article_html_chunk(html))
+
+
+def _add_html_with_resource_catalog(
+    builder: ContentBuilder,
+    parent,
+    html: str,
+    *,
+    page_slug: str | None,
+) -> None:
+    """Text plugin(s) plus optional XRAS catalog Snippet where the scrape embedded it.
+
+    ``renderCatalog`` options: {readme}
+    """.format(readme=RESOURCE_CATALOG_README_URL)
+    catalog_snippet = resource_catalog_snippet_for_page(page_slug)
+    for segment in split_html_at_resource_catalog(html):
+        if segment is RESOURCE_CATALOG_SEGMENT:
+            if catalog_snippet:
+                slug, name, body = catalog_snippet
+                builder.add_snippet_html(parent, slug=slug, name=name, html=body)
+            continue
+        prepared = _prepare_html(segment)
+        if prepared:
+            builder.add_text(parent, prepared)
 
 
 def extract_announcement_banners(html: str) -> list[str]:
@@ -211,7 +242,9 @@ def _add_article_text_plugins_from_html(
             tag_type='section',
             label=nairr_section_label_from_chunk(pending_h1),
         )
-        builder.add_text(section, pending_h1)
+        _add_html_with_resource_catalog(
+            builder, section, pending_h1, page_slug=page_slug
+        )
         _note_section(section)
         pending_h1 = None
 
@@ -242,7 +275,9 @@ def _add_article_text_plugins_from_html(
                 body_parts.append(pending_h1)
                 pending_h1 = None
             body_parts.append(chunk)
-            builder.add_text(section, ''.join(body_parts))
+            _add_html_with_resource_catalog(
+                builder, section, ''.join(body_parts), page_slug=page_slug
+            )
             _note_section(section)
         else:
             _flush_pending_h1_section()
@@ -251,7 +286,9 @@ def _add_article_text_plugins_from_html(
                 MUTED_SECTION,
                 tag_type='div',
             )
-            builder.add_text(section, chunk)
+            _add_html_with_resource_catalog(
+                builder, section, chunk, page_slug=page_slug
+            )
             _note_section(section)
 
     _flush_pending_h1_section()

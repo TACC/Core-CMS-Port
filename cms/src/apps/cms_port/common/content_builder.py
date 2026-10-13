@@ -494,3 +494,27 @@ class ContentBuilder:
             target=parent,
             snippet=snippet,
         )
+
+    def add_snippet_html(self, parent, *, slug: str, name: str, html: str):
+        """Add arbitrary snippet HTML via djangocms_snippet, keyed by slug for re-import."""
+        snippet, created = Snippet.objects.get_or_create(
+            slug=slug,
+            defaults={
+                'name': name,
+                'html': html,
+            },
+        )
+        if not created and snippet.html != html:
+            snippet.html = html
+            snippet.full_clean()
+            snippet.save()
+        elif created:
+            snippet.full_clean()
+        self._reject_non_section_child_of_content_root(parent)
+        return add_plugin(
+            self.placeholder,
+            SnippetPlugin,
+            self.language,
+            target=parent,
+            snippet=snippet,
+        )
