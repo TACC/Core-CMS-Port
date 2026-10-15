@@ -29,7 +29,7 @@ def populate_page_content(spec: PageSpec, placeholder, language, scrape_root) ->
         rewrite_url=rewrite_support_url,
     )
 
-    if spec.pattern in ('section_parent', 'empty', 'blog'):
+    if spec.pattern in ('top_level_page', 'empty', 'blog'):
         return
 
     if spec.pattern == 'home':

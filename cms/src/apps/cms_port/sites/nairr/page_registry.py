@@ -28,7 +28,7 @@ class PageSpec:
     menu_title: Optional[str] = None
 
 
-SECTION_PARENTS = {
+TOP_LEVEL_PAGES = {
     'about': 'About',
     'opportunities': 'Opportunities',
     'projects': 'Projects',
@@ -61,7 +61,7 @@ PAGE_SPECS = [
         menu_title='Home',
     ),
     PageSpec('getting-started', 'Get Started', 'standard.html', 'getting-started', 'getting_started'),
-    PageSpec('about', 'About', 'standard.html', '', 'section_parent'),
+    PageSpec('about', 'About', 'standard.html', '', 'top_level_page'),
     PageSpec(
         'about/overview',
         'Overview',
@@ -72,7 +72,7 @@ PAGE_SPECS = [
         tested=True,
     ),
     PageSpec('about/secure', 'NAIRR Secure', 'standard.html', 'about/secure', 'article', parent_slug='about'),
-    PageSpec('opportunities', 'Opportunities', 'standard.html', '', 'section_parent'),
+    PageSpec('opportunities', 'Opportunities', 'standard.html', '', 'top_level_page'),
     PageSpec(
         'opportunities/startup-project',
         'Start-Up Project',
@@ -128,7 +128,7 @@ PAGE_SPECS = [
         'article',
         parent_slug='opportunities',
     ),
-    PageSpec('projects', 'Projects', 'standard.html', '', 'section_parent'),
+    PageSpec('projects', 'Projects', 'standard.html', '', 'top_level_page'),
     PageSpec(
         'projects/awarded',
         'Resource Allocations',
@@ -167,10 +167,10 @@ PAGE_SPECS = [
         'Project Highlights',
         'standard.html',
         'projects/highlights',
-        'empty',
+        'blog',
         parent_slug='projects',
     ),
-    PageSpec('news', 'News/Events', 'standard.html', '', 'section_parent'),
+    PageSpec('news', 'News/Events', 'standard.html', '', 'top_level_page'),
     PageSpec(
         'news/news',
         'News',
@@ -211,7 +211,7 @@ PAGE_SPECS = [
         'article',
         parent_slug='news',
     ),
-    PageSpec('help', 'Learn/Get Help', 'standard.html', '', 'section_parent'),
+    PageSpec('help', 'Learn/Get Help', 'standard.html', '', 'top_level_page'),
     PageSpec(
         'help/faq',
         'Frequently Asked Questions',
@@ -278,7 +278,7 @@ def scrape_targets():
     """Unique scrape paths for ``scrape_pages --site nairr --all``."""
     seen = set()
     for spec in PAGE_SPECS:
-        if spec.pattern in ('section_parent', 'home'):
+        if spec.pattern in ('top_level_page', 'home'):
             continue
         path = spec.scrape_path
         if path not in seen:
@@ -297,7 +297,7 @@ def spec_by_slug(slug: str) -> Optional[PageSpec]:
 
 
 def expand_specs_with_ancestors(specs: list[PageSpec]) -> list[PageSpec]:
-    """Ensure section parents exist when importing a single child (e.g. about/overview)."""
+    """Ensure top-level pages exist when importing a single child (e.g. about/overview)."""
     by_slug = {s.slug: s for s in PAGE_SPECS}
     ordered: list[PageSpec] = []
     seen: set[str] = set()
