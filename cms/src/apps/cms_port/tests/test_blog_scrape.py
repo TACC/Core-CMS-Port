@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.test import SimpleTestCase
 
 from apps.cms_port.sites.nairr import blog_scrape
@@ -29,3 +31,19 @@ class BlogScrapeKindTests(SimpleTestCase):
             'nDescription': '<p>Sandbox <a href="/projects/sandbox">here</a></p>',
         }
         self.assertEqual(blog_scrape.news_kind(item), 'external')
+
+    def test_image_extension_from_url(self):
+        self.assertEqual(
+            blog_scrape.image_extension_from_url(
+                'https://nairrpilot.org/app/site/media/projects/foo-tn.jpg'
+            ),
+            '.jpg',
+        )
+        self.assertEqual(blog_scrape.image_extension_from_url('https://x.test/a'), '.jpg')
+
+    def test_project_image_path(self):
+        root = blog_scrape.blog_dir(Path('/scraped/nairr'))
+        self.assertEqual(
+            blog_scrape.project_image_path(root, 'alpha', '.png'),
+            Path('/scraped/nairr/blog/projects/images/alpha.png'),
+        )

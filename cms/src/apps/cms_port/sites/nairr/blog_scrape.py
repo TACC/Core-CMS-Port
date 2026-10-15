@@ -49,6 +49,37 @@ def project_html_path(root: Path, slug: str) -> Path:
     return blog_dir(root) / 'projects' / f'{slug}.html'
 
 
+def project_image_path(root: Path, slug: str, ext: str = '.jpg') -> Path:
+    suffix = ext if ext.startswith('.') else f'.{ext}'
+    return blog_dir(root) / 'projects' / 'images' / f'{slug}{suffix}'
+
+
+def image_extension_from_url(url: str) -> str:
+    path = urlparse(url).path
+    suffix = Path(path).suffix.lower()
+    if suffix in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        return suffix
+    return '.jpg'
+
+
+def download_image(
+    session: requests.Session,
+    url: str,
+    dest: Path,
+    *,
+    force: bool,
+) -> bool:
+    if not url:
+        return False
+    if dest.is_file() and not force:
+        return True
+    response = session.get(url, timeout=120)
+    response.raise_for_status()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(response.content)
+    return True
+
+
 def scrape_targets(base: str) -> BlogScrapeTargets:
     base = base.rstrip('/')
     return BlogScrapeTargets(
@@ -153,6 +184,13 @@ def scrape_projects(
     rows = build_projects_manifest_rows(items, base)
     if slug_filter is not None:
         rows = [row for row in rows if row['slug'] == slug_filter]
+    for row in rows:
+        image_url = (row.get('image_url') or '').strip()
+        if image_url:
+            ext = image_extension_from_url(image_url)
+            dest = project_image_path(root, row['slug'], ext)
+            if download_image(session, image_url, dest, force=force):
+                row['image_file'] = str(dest.relative_to(blog_dir(root)))
     write_manifest(projects_manifest_path(root), rows)
     written = 1
     for row in rows:
