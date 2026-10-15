@@ -19,6 +19,7 @@ from django.core.management.base import BaseCommand, CommandError
 from cms.api import create_page, publish_page
 from cms.models import Page
 
+from apps.cms_port.common.registry_pages import adopt_registry_reverse_id, find_page_for_registry_slug
 from apps.cms_port.site_loader import load_site
 
 GENERATED_CONTAINER_SLUG = 'generated'
@@ -131,9 +132,15 @@ class Command(BaseCommand):
                 self._delete_drafts(reverse_id)
 
             existing = Page.objects.drafts().filter(reverse_id=reverse_id).first()
+            if not existing:
+                found = find_page_for_registry_slug(spec.slug, language, page_registry)
+                if found:
+                    existing = adopt_registry_reverse_id(
+                        found, spec.slug, page_registry, publisher
+                    )
             if existing:
                 page = existing
-                self.stdout.write(f'Using existing draft for {spec.slug or "home"}')
+                self.stdout.write(f'Using existing page for {spec.slug or "home"}')
             else:
                 create_kwargs = dict(
                     title=spec.title,
@@ -160,7 +167,7 @@ class Command(BaseCommand):
 
             page_by_slug[spec.slug] = page
 
-            if spec.pattern in ('section_parent', 'empty', 'blog'):
+            if spec.pattern in ('top_level_page', 'empty', 'blog'):
                 if spec.pattern == 'blog':
                     self.stdout.write(
                         self.style.WARNING(
@@ -422,14 +429,14 @@ class Command(BaseCommand):
                 page_by_slug[spec.parent_slug] = page
                 return page
             return None
-        if spec.pattern in ('section_parent', 'home'):
+        if spec.pattern in ('top_level_page', 'home'):
             return None
         if generated_container is not None:
             return generated_container
         return self._get_generated_container(page_by_slug, page_registry)
 
     def _replace_deletes_draft(self, spec, *, replace_page_slug: str | None) -> bool:
-        """With ``--slug``, only delete the target page—not ancestor section folders (and their siblings)."""
+        """With ``--slug``, only delete the target page—not ancestor top-level pages (and their siblings)."""
         if replace_page_slug is None:
             return True
         if replace_page_slug == 'home':

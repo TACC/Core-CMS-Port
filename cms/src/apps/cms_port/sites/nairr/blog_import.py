@@ -19,12 +19,21 @@ from cms.api import create_page, publish_page
 from cms.models import Page
 from djangocms_blog.models import BlogConfig, Post
 
+from apps.cms_port.common.registry_pages import (
+    BLOG_APPHOOK,
+    adopt_registry_reverse_id,
+    find_page_for_registry_slug,
+)
 from apps.cms_port.sites.nairr import blog_scrape
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
-from apps.cms_port.sites.nairr.page_registry import reverse_id_for_slug, spec_by_slug
+from apps.cms_port.sites.nairr import page_registry
+from apps.cms_port.sites.nairr.page_registry import spec_by_slug
 from apps.cms_port.sites.nairr.support_links import rewrite_support_url
 
-BLOG_APPHOOK = 'BlogApp'
+LEGACY_BLOG_NAMESPACES = {
+    'news': ('nairr-news', 'news'),
+    'projects': ('nairr-project-highlights', 'project-highlights'),
+}
 EXTERNAL_TAG = blog_scrape.EXTERNAL_TAG_NAME
 
 
@@ -37,9 +46,9 @@ class BlogTarget:
 
 
 BLOG_TARGETS = {
-    'news': BlogTarget('news', 'news/news', 'nairr-news', 'News'),
+    'news': BlogTarget('news', 'news/news', 'News', 'News'),
     'projects': BlogTarget(
-        'projects', 'projects/highlights', 'nairr-project-highlights', 'Project Highlights'
+        'projects', 'projects/highlights', 'Project Highlights', 'Project Highlights'
     ),
 }
 
@@ -63,13 +72,6 @@ def _parse_date(value: str):
         except ValueError:
             continue
     return timezone.now()
-
-
-def _find_page(reverse_id: str) -> Page | None:
-    page = Page.objects.drafts().filter(reverse_id=reverse_id).first()
-    if page:
-        return page
-    return Page.objects.filter(reverse_id=reverse_id).first()
 
 
 def _rewrite_internal_hrefs(html: str, language: str, site_base: str) -> str:
@@ -108,8 +110,31 @@ def _split_title_body(html: str) -> tuple[str, str]:
     return title, root.decode_contents().strip()
 
 
+def _merge_blog_config(
+    primary: BlogConfig | None,
+    other: BlogConfig,
+    target: BlogTarget,
+    language: str,
+) -> BlogConfig:
+    if primary is None:
+        other.namespace = target.namespace
+        other.save(update_fields=['namespace'])
+        primary = other
+    else:
+        Post.objects.filter(app_config=other).update(app_config=primary)
+        other.delete()
+    primary.set_current_language(language)
+    primary.app_title = target.app_title
+    primary.save()
+    return primary
+
+
 def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     config = BlogConfig.objects.filter(namespace=target.namespace).first()
+    for legacy_ns in LEGACY_BLOG_NAMESPACES.get(target.key, ()):
+        legacy = BlogConfig.objects.filter(namespace=legacy_ns).first()
+        if legacy:
+            config = _merge_blog_config(config, legacy, target, language)
     if not config:
         config = BlogConfig.objects.create(namespace=target.namespace)
     config.set_current_language(language)
@@ -118,20 +143,45 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     return config
 
 
+def _retire_stray_root_news_blog(canonical_page: Page, target: BlogTarget, language: str) -> None:
+    """Remove a mistaken root ``/news/`` blog page when ``news/news`` is canonical."""
+    if target.page_slug != 'news/news':
+        return
+    canonical = canonical_page.get_draft_object() if hasattr(canonical_page, 'get_draft_object') else canonical_page
+    for page in Page.objects.filter(node__parent__isnull=True):
+        draft = page.get_draft_object() if hasattr(page, 'get_draft_object') else page
+        if draft.pk == canonical.pk:
+            continue
+        title = draft.get_title_obj(language)
+        if not title or title.path != 'news':
+            continue
+        if draft.application_urls != BLOG_APPHOOK:
+            continue
+        legacy_ns = draft.application_namespace
+        if legacy_ns:
+            legacy = BlogConfig.objects.filter(namespace=legacy_ns).first()
+            if legacy:
+                ensure_blog_config(target, language)
+                canonical_config = BlogConfig.objects.filter(namespace=target.namespace).first()
+                if canonical_config:
+                    Post.objects.filter(app_config=legacy).update(app_config=canonical_config)
+                    legacy.delete()
+        draft.delete()
+
+
 def _ensure_registry_page(
     slug: str,
     language: str,
     publisher,
     no_publish: bool,
 ) -> Page:
-    """Ensure a registry page exists under the real tree (section parents at site root)."""
+    """Ensure a registry page exists under the real tree (top-level pages, not under Generated)."""
     spec = spec_by_slug(slug)
     if not spec:
         raise ValueError(f'Unknown page slug {slug!r}')
-    reverse_id = reverse_id_for_slug(spec.slug)
-    page = _find_page(reverse_id)
+    page = find_page_for_registry_slug(spec.slug, language, page_registry)
     if page:
-        return page
+        return adopt_registry_reverse_id(page, spec.slug, page_registry, publisher)
     parent = None
     if spec.parent_slug:
         parent = _ensure_registry_page(spec.parent_slug, language, publisher, no_publish)
@@ -141,7 +191,7 @@ def _ensure_registry_page(
         language=language,
         slug=spec.slug.split('/')[-1] or 'home',
         parent=parent,
-        reverse_id=reverse_id,
+        reverse_id=page_registry.reverse_id_for_slug(spec.slug),
         created_by=publisher,
         in_navigation=spec.in_navigation,
         published=False,
@@ -155,8 +205,9 @@ def _ensure_registry_page(
 
 def ensure_blog_page(target: BlogTarget, language: str, publisher, no_publish: bool) -> Page:
     page = _ensure_registry_page(target.page_slug, language, publisher, no_publish)
+    _retire_stray_root_news_blog(page, target, language)
     draft = page.get_draft_object() if hasattr(page, 'get_draft_object') else page
-    if not draft.application_urls:
+    if draft.application_urls != BLOG_APPHOOK or draft.application_namespace != target.namespace:
         draft.application_urls = BLOG_APPHOOK
         draft.application_namespace = target.namespace
         draft.save(update_fields=['application_urls', 'application_namespace'])

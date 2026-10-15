@@ -11,7 +11,7 @@ from cms.models import Page
 from apps.cms_port.site_loader import default_site_id, load_site, portal_scrape_entry
 
 GENERATED_CONTAINER_SLUG = 'generated'
-NO_CONTENT_PATTERNS = ('section_parent', 'empty', 'blog')
+NO_CONTENT_PATTERNS = ('top_level_page', 'empty', 'blog')
 
 
 @dataclass

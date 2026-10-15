@@ -70,7 +70,7 @@ class Command(BaseCommand):
             if not specs_for_tested:
                 raise CommandError('This site page registry has no specs_for_tested().')
             for spec in specs_for_tested():
-                if spec.pattern == 'section_parent':
+                if spec.pattern == 'top_level_page':
                     continue
                 path = 'home' if spec.pattern == 'home' else spec.scrape_path
                 if path not in paths:
