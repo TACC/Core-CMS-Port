@@ -271,22 +271,6 @@ def import_news_row(
     description = row.get('abstract_html', '')
     site_host = urlparse(site_base).netloc
 
-    if kind == 'full':
-        html_path = blog_scrape.news_full_html_path(root, int(row['id']))
-        html = html_path.read_text(encoding='utf-8') if html_path.is_file() else ''
-        _, body = _split_title_body(html) if html else ('', '')
-        abstract = _rewrite_internal_hrefs(description, language, site_base)
-        return _upsert_post(
-            config,
-            row,
-            language=language,
-            publisher=publisher,
-            no_publish=no_publish,
-            abstract_html=abstract,
-            post_text=body,
-            external_tag=False,
-        )
-
     if kind == 'external_hidden':
         redirect = blog_scrape.first_offsite_href(description, site_host)
         if not redirect:

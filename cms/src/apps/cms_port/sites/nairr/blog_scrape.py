@@ -17,8 +17,6 @@ from apps.cms_port.sites.nairr import scrape_lib
 NEWS_JSON_PATH = '/pilotnews/news.json'
 HIGHLIGHTS_JSON_PATH = '/pilotprojecthighlights/highlights.json'
 
-NEWS_FULL_POST_ID = 13
-
 HIDDEN_CTA_MARKERS = (
     'Learn more at',
     'Read the Full Story',
@@ -51,10 +49,6 @@ def project_html_path(root: Path, slug: str) -> Path:
     return blog_dir(root) / 'projects' / f'{slug}.html'
 
 
-def news_full_html_path(root: Path, post_id: int) -> Path:
-    return blog_dir(root) / 'news' / f'{post_id}.html'
-
-
 def scrape_targets(base: str) -> BlogScrapeTargets:
     base = base.rstrip('/')
     return BlogScrapeTargets(
@@ -65,8 +59,6 @@ def scrape_targets(base: str) -> BlogScrapeTargets:
 
 
 def news_kind(item: dict) -> str:
-    if item.get('id') == NEWS_FULL_POST_ID:
-        return 'full'
     description = item.get('nDescription') or ''
     if any(marker in description for marker in HIDDEN_CTA_MARKERS):
         return 'external_hidden'
@@ -142,22 +134,7 @@ def scrape_news(
     if slug_filter is not None:
         rows = [row for row in rows if row['slug'] == slug_filter]
     write_manifest(news_manifest_path(root), rows)
-    written = 1
-    for row in rows:
-        if row['kind'] != 'full':
-            continue
-        out = news_full_html_path(root, row['id'])
-        if out.is_file() and not force:
-            continue
-        # Full news post body is authored in-repo (see ``blog/news/13.html`` seed).
-        seed = Path(__file__).resolve().parent / 'static/nairr/data/blog-news-13.html'
-        if seed.is_file():
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(seed.read_text(encoding='utf-8'), encoding='utf-8')
-            written += 1
-        if crawl_delay:
-            time.sleep(crawl_delay)
-    return written
+    return 1
 
 
 def scrape_projects(
