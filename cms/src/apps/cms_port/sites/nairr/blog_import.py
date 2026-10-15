@@ -19,11 +19,12 @@ from cms.api import create_page, publish_page
 from cms.models import Page
 from djangocms_blog.models import BlogConfig, Post
 
-from apps.cms_port.common.filer_assets import (
-    BlogThumbnailOptions,
-    ensure_blog_thumbnail_options,
-    import_filer_image,
+from apps.cms_port.common.blog_app_config import (
+    PortBlogThumbnailOptions,
+    apply_port_blog_thumbnail_config,
+    ensure_port_blog_thumbnail_options,
 )
+from apps.cms_port.common.filer_assets import import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
     adopt_registry_reverse_id,
@@ -145,6 +146,7 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     config.set_current_language(language)
     config.app_title = target.app_title
     config.save()
+    apply_port_blog_thumbnail_config(config)
     return config
 
 
@@ -229,7 +231,7 @@ def _attach_main_image(
     *,
     root: Path,
     publisher,
-    thumbnail_options: BlogThumbnailOptions,
+    thumbnail_options: PortBlogThumbnailOptions,
 ) -> None:
     rel = (row.get('image_file') or '').strip()
     if not rel:
@@ -255,7 +257,7 @@ def _upsert_post(
     external_tag: bool,
     title: str | None = None,
     root: Path | None = None,
-    thumbnail_options: BlogThumbnailOptions | None = None,
+    thumbnail_options: PortBlogThumbnailOptions | None = None,
 ) -> Post:
     slug = row['slug']
     post = (
@@ -301,7 +303,7 @@ def import_news_row(
     publisher,
     no_publish: bool,
     site_base: str,
-    thumbnail_options: BlogThumbnailOptions,
+    thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     kind = row.get('kind', 'external')
     description = row.get('abstract_html', '')
@@ -341,7 +343,7 @@ def import_projects_row(
     language: str,
     publisher,
     no_publish: bool,
-    thumbnail_options: BlogThumbnailOptions,
+    thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     html_path = blog_scrape.project_html_path(root, row['slug'])
     html = html_path.read_text(encoding='utf-8') if html_path.is_file() else ''
@@ -374,7 +376,7 @@ def import_blog(
     target = BLOG_TARGETS[blog_key]
     ensure_blog_page(target, language, publisher, no_publish)
     config = ensure_blog_config(target, language)
-    thumbnail_options = ensure_blog_thumbnail_options()
+    thumbnail_options = ensure_port_blog_thumbnail_options()
     if blog_key == 'news':
         rows = load_manifest(blog_scrape.news_manifest_path(root))
         importer = lambda row: import_news_row(
