@@ -422,6 +422,8 @@ class Command(BaseCommand):
                 page_by_slug[spec.parent_slug] = page
                 return page
             return None
+        if spec.pattern in ('section_parent', 'home'):
+            return None
         if generated_container is not None:
             return generated_container
         return self._get_generated_container(page_by_slug, page_registry)

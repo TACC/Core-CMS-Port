@@ -118,38 +118,49 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     return config
 
 
-def ensure_blog_page(target: BlogTarget, language: str, publisher, no_publish: bool) -> Page:
-    spec = spec_by_slug(target.page_slug)
+def _ensure_registry_page(
+    slug: str,
+    language: str,
+    publisher,
+    no_publish: bool,
+) -> Page:
+    """Ensure a registry page exists under the real tree (section parents at site root)."""
+    spec = spec_by_slug(slug)
     if not spec:
-        raise ValueError(f'Unknown page slug {target.page_slug!r}')
+        raise ValueError(f'Unknown page slug {slug!r}')
     reverse_id = reverse_id_for_slug(spec.slug)
     page = _find_page(reverse_id)
-    created = False
-    if not page:
-        parent = None
-        if spec.parent_slug:
-            parent_reverse = reverse_id_for_slug(spec.parent_slug)
-            parent = _find_page(parent_reverse)
-        page = create_page(
-            title=spec.title,
-            template=spec.template,
-            language=language,
-            slug=spec.slug.split('/')[-1],
-            parent=parent,
-            reverse_id=reverse_id,
-            created_by=publisher,
-            in_navigation=spec.in_navigation,
-            apphook=BLOG_APPHOOK,
-            apphook_namespace=target.namespace,
-            published=False,
-        )
-        created = True
+    if page:
+        return page
+    parent = None
+    if spec.parent_slug:
+        parent = _ensure_registry_page(spec.parent_slug, language, publisher, no_publish)
+    page = create_page(
+        title=spec.title,
+        template=spec.template,
+        language=language,
+        slug=spec.slug.split('/')[-1] or 'home',
+        parent=parent,
+        reverse_id=reverse_id,
+        created_by=publisher,
+        in_navigation=spec.in_navigation,
+        published=False,
+    )
+    if not no_publish:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)
+            page = publish_page(page, publisher, language)
+    return page
+
+
+def ensure_blog_page(target: BlogTarget, language: str, publisher, no_publish: bool) -> Page:
+    page = _ensure_registry_page(target.page_slug, language, publisher, no_publish)
     draft = page.get_draft_object() if hasattr(page, 'get_draft_object') else page
     if not draft.application_urls:
         draft.application_urls = BLOG_APPHOOK
         draft.application_namespace = target.namespace
         draft.save(update_fields=['application_urls', 'application_namespace'])
-    if created and not no_publish:
+    if not no_publish:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)
             page = publish_page(draft, publisher, language)
