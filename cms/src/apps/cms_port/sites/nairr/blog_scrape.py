@@ -125,8 +125,16 @@ def build_news_manifest_rows(items: list) -> list[dict]:
 
 
 def build_projects_manifest_rows(items: list, base: str) -> list[dict]:
+    """Build manifest rows oldest-first (``items`` from the source feed is newest-first).
+
+    Highlights carry no per-item publish date, so import stamps each row with
+    ``timezone.now()`` as it's created. Writing the manifest oldest-first means a plain,
+    in-order import gives the newest highlight the latest timestamp, matching
+    https://nairrpilot.org/projects/highlights (newest-first) once djangocms_blog sorts by
+    ``-date_published``.
+    """
     rows = []
-    for item in items:
+    for item in reversed(items):
         url = item.get('url') or ''
         slug = _slug_from_highlight_url(url)
         if not slug:
