@@ -175,7 +175,8 @@ def build_news_manifest_rows(items: list) -> list[dict]:
 
 def build_projects_manifest_rows(items: list, base: str) -> list[dict]:
     rows = []
-    for item in items:
+    # Feed is newest-first; oldest-first manifest matches blog list order after import.
+    for item in reversed(items):
         url = item.get('url') or ''
         slug = _slug_from_highlight_url(url)
         if not slug:
