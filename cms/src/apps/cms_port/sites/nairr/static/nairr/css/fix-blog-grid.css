@@ -3,7 +3,19 @@
 /* SEE: _imports/tools/x-news.css */
 
 .blog-list.as-grid {
-  & > .pagination {
+  /* Text-only cards (empty `.blog-visual`): never more than two columns */
+  &:not(:has(.blog-visual:not(:empty))) {
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* To prevent truncation of list items */
+  & .blog-lead {
+    max-height: unset;
+  }
+
+  & .pagination {
     /* To keep pagination on its own row */
     grid-column: 1 / -1;
 
@@ -16,7 +28,7 @@
   &:has(.pagination) {
     margin-bottom: unset;
   }
-  & > .pagination {
+  & .pagination {
     margin-bottom: var(--global-space--large);
   }
 }
