@@ -153,7 +153,14 @@ PAGE_SPECS = [
         'article',
         parent_slug='projects',
     ),
-    PageSpec('map', 'Projects Map', 'fullwidth.html', 'map', 'empty'),
+    PageSpec(
+        'map',
+        'Projects Map',
+        'fullwidth.html',
+        'map',
+        'empty',
+        parent_slug='projects',
+    ),
     PageSpec(
         'projects/sandbox',
         'Sandbox Projects',
@@ -278,7 +285,7 @@ def scrape_targets():
     """Unique scrape paths for ``scrape_pages --site nairr --all``."""
     seen = set()
     for spec in PAGE_SPECS:
-        if spec.pattern in ('top_level_page', 'home'):
+        if spec.pattern in ('top_level_page', 'home', 'blog'):
             continue
         path = spec.scrape_path
         if path not in seen:
