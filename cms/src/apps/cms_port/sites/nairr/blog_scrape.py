@@ -10,8 +10,9 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 
+from apps.cms_port.common.html_text import collapse_whitespace
 from apps.cms_port.sites.nairr import scrape_lib
 
 NEWS_JSON_PATH = '/pilotnews/news.json'
@@ -89,6 +90,54 @@ def scrape_targets(base: str) -> BlogScrapeTargets:
     )
 
 
+def plain_news_title(value: str) -> str:
+    """News post titles must be plain text (source JSON may include inline markup)."""
+    text = (value or '').strip()
+    if not text or '<' not in text:
+        return text
+    return collapse_whitespace(BeautifulSoup(text, 'lxml').get_text())
+
+
+def _paragraph_is_only_br_separated_links(paragraph: Tag) -> bool:
+    anchors = paragraph.find_all('a')
+    if len(anchors) != 2:
+        return False
+    for child in paragraph.children:
+        if isinstance(child, NavigableString):
+            if str(child).strip():
+                return False
+        elif child.name in ('a', 'br'):
+            continue
+        else:
+            return False
+    return True
+
+
+def prepare_news_abstract_html(html: str) -> str:
+    """
+    Normalize scraped news teaser HTML before import.
+
+    Link pairs separated by ``<br>`` inside one paragraph become a ``ul``.
+    """
+    html = (html or '').strip()
+    if not html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-news-abstract>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-news-abstract]')
+    if not root:
+        return html
+    for paragraph in list(root.find_all('p')):
+        if not _paragraph_is_only_br_separated_links(paragraph):
+            continue
+        link_list = soup.new_tag('ul')
+        for anchor in paragraph.find_all('a'):
+            item = soup.new_tag('li')
+            item.append(anchor.extract())
+            link_list.append(item)
+        paragraph.replace_with(link_list)
+    return root.decode_contents().strip()
+
+
 def news_kind(item: dict) -> str:
     description = item.get('nDescription') or ''
     if any(marker in description for marker in HIDDEN_CTA_MARKERS):
@@ -115,9 +164,9 @@ def build_news_manifest_rows(items: list) -> list[dict]:
             {
                 'slug': str(post_id),
                 'id': post_id,
-                'title': item.get('nName', ''),
+                'title': plain_news_title(item.get('nName', '')),
                 'date': item.get('nDatePublished') or item.get('nDate', ''),
-                'abstract_html': item.get('nDescription', ''),
+                'abstract_html': prepare_news_abstract_html(item.get('nDescription', '')),
                 'kind': news_kind(item),
             }
         )
