@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from djangocms_blog.models import BlogConfig
+from django.contrib.auth import get_user_model
+from djangocms_blog.models import BlogConfig, Post
+from djangocms_blog.settings import get_setting
 from filer.models import ThumbnailOption
 
 # Texas CTRN production Filer thumbnail options (TACC default set for ported blogs).
@@ -74,3 +76,16 @@ def apply_port_blog_config(config: BlogConfig) -> PortBlogThumbnailOptions:
     """Apply all shared port blog ``BlogConfig`` settings (app + thumbnails)."""
     apply_port_blog_app_config(config)
     return apply_port_blog_thumbnail_config(config)
+
+
+def apply_import_post_author(post: Post, publisher) -> None:
+    """Align ``Post.author`` with apphook ``set_author`` (``Post._set_default_author`` rules)."""
+    if not post.app_config.set_author:
+        post.author = None
+        return
+    if post.author_id:
+        return
+    if get_setting('AUTHOR_DEFAULT') is True:
+        post.author = publisher
+    else:
+        post.author = get_user_model().objects.get(username=get_setting('AUTHOR_DEFAULT'))

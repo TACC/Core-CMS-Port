@@ -21,6 +21,7 @@ from djangocms_blog.models import BlogConfig, Post
 
 from apps.cms_port.common.blog_app_config import (
     PortBlogThumbnailOptions,
+    apply_import_post_author,
     apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
@@ -268,7 +269,8 @@ def _upsert_post(
         .first()
     )
     if not post:
-        post = Post(app_config=config, author=publisher)
+        post = Post(app_config=config)
+    apply_import_post_author(post, publisher)
     post.set_current_language(language)
     post.title = title or row.get('title') or slug
     post.slug = slug
