@@ -15,7 +15,7 @@ PORTAL_SCRAPE_SITE = 'nairr'
 PORTAL_STYLES = [
     {
         'is_remote': True,
-        'path': 'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.58.1-rc7/dist/core-styles.cms.v3-bridge-for-v2-users.css',
+        'path': 'https://cdn.jsdelivr.net/npm/@tacc/core-styles@2.59.2/dist/core-styles.cms.v3-bridge-for-v2-users.css',
     },
     {
         'is_remote': False,
@@ -48,17 +48,17 @@ Scraped `home.html` section classes don't always match their headings:
 
 Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
 
+- `css/annotation.css`
+- `css/btn.css`
+- `css/o-columns.css`
+- `js/faq-accordion.js`
+
 ## Links
 
 In Link/Button plugins:
 
 - Site-relative links use the **Internal link** field, not External. A blank page is created if the target is missing (see `internal_pages.py`). This is automatic on import.
 - Support, help and ticket links go to https://tacc.utexas.edu/about/help/ (see `support_links.py`).
-
-- `css/annotation.css`
-- `css/btn.css`
-- `css/o-columns.css`
-- `js/faq-accordion.js`
 
 > [!IMPORTANT]
 > **TODO:** Move these to [Core-CMS-Custom](https://github.com/TACC/Core-CMS-Custom).
