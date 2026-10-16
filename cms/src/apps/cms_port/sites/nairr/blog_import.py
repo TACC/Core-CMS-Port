@@ -21,7 +21,7 @@ from djangocms_blog.models import BlogConfig, Post
 
 from apps.cms_port.common.blog_app_config import (
     PortBlogThumbnailOptions,
-    apply_port_blog_thumbnail_config,
+    apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
 from apps.cms_port.common.filer_assets import import_filer_image
@@ -31,6 +31,7 @@ from apps.cms_port.common.registry_pages import (
     find_page_for_registry_slug,
 )
 from apps.cms_port.sites.nairr import blog_scrape
+from apps.cms_port.sites.nairr.blog_site_config import apply_nairr_blog_app_config
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
 from apps.cms_port.sites.nairr.page_registry import spec_by_slug
@@ -146,7 +147,9 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     config.set_current_language(language)
     config.app_title = target.app_title
     config.save()
-    apply_port_blog_thumbnail_config(config)
+    apply_port_blog_config(config)
+    apply_nairr_blog_app_config(config)
+    config.save()
     return config
 
 
