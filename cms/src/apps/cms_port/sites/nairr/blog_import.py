@@ -21,7 +21,7 @@ from djangocms_blog.models import BlogConfig, Post
 
 from apps.cms_port.common.blog_app_config import (
     PortBlogThumbnailOptions,
-    apply_port_blog_thumbnail_config,
+    apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
 from apps.cms_port.common.filer_assets import import_filer_image
@@ -146,7 +146,7 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     config.set_current_language(language)
     config.app_title = target.app_title
     config.save()
-    apply_port_blog_thumbnail_config(config)
+    apply_port_blog_config(config)
     return config
 
 
