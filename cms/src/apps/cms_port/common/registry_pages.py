@@ -78,7 +78,12 @@ def _pick_child(candidates, slug_part, language, *, spec, registry):
 
 
 def find_page_for_registry_slug(slug: str, language: str, registry) -> Page | None:
-    """Find a draft/public page for a registry slug, including path-only matches."""
+    """Find a draft/public page for a registry slug, including path-only matches.
+
+    Path-only matches are scoped to the ``Generated`` subtree, so this never adopts
+    ``create_blog``'s root-only ancestor stubs (``blog_root_stub_reverse_id``), which share
+    a title path (e.g. ``news``) with their Generated counterpart but must stay distinct.
+    """
     spec = registry.spec_by_slug(slug)
     if not spec:
         return None
@@ -90,7 +95,7 @@ def find_page_for_registry_slug(slug: str, language: str, registry) -> Page | No
     if not segments:
         return None
 
-    parent: Page | None = None
+    parent: Page | None = _generated_draft(registry)
     for index, slug_part in enumerate(segments):
         partial_slug = '/'.join(segments[: index + 1])
         partial_spec = registry.spec_by_slug(partial_slug)

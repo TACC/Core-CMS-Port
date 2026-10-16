@@ -7,6 +7,7 @@ from cms.models import Page
 from apps.cms_port.common.registry_pages import (
     GENERATED_CONTAINER_SLUG,
     blog_root_stub_reverse_id,
+    find_page_for_registry_slug,
     is_under_generated,
 )
 from apps.cms_port.sites.nairr import blog_import, page_registry
@@ -90,6 +91,21 @@ class BlogRegistryTreeTests(TestCase):
         stub = Page.objects.drafts().filter(reverse_id=stub_reverse_id).first()
         self.assertIsNotNone(stub)
         self.assertFalse(is_under_generated(stub, page_registry))
+
+    def test_find_page_for_registry_slug_ignores_blog_root_stub(self):
+        """``create_pages``'s path-only fallback must not adopt the root blog stub.
+
+        Regression test: before scoping the fallback to the ``Generated`` subtree, this adopted
+        the root-only ``News/Events`` stub (same title path, different reverse_id) created by
+        ``create_blog``, hijacking it to become the canonical ``news`` page and hoisting the
+        whole pending-review subtree (events, community workshops, etc.) to site root.
+        """
+        blog_import.ensure_blog_page(
+            blog_import.BLOG_TARGETS['news'], TEST_LANGUAGE, self.publisher, no_publish=True
+        )
+        found = find_page_for_registry_slug('news', TEST_LANGUAGE, page_registry)
+        self.assertEqual(found.pk, self.news_under_generated.pk)
+        self.assertTrue(is_under_generated(found, page_registry))
 
     def test_ensure_registry_page_is_idempotent(self):
         first = blog_import._ensure_registry_page('news', TEST_LANGUAGE, self.publisher, True)
