@@ -19,6 +19,12 @@ from cms.api import create_page, publish_page
 from cms.models import Page
 from djangocms_blog.models import BlogConfig, Post
 
+from apps.cms_port.common.blog_app_config import (
+    PortBlogThumbnailOptions,
+    apply_port_blog_thumbnail_config,
+    ensure_port_blog_thumbnail_options,
+)
+from apps.cms_port.common.filer_assets import import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
     adopt_registry_reverse_id,
@@ -140,6 +146,7 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     config.set_current_language(language)
     config.app_title = target.app_title
     config.save()
+    apply_port_blog_thumbnail_config(config)
     return config
 
 
@@ -218,6 +225,26 @@ def ensure_blog_page(target: BlogTarget, language: str, publisher, no_publish: b
     return page
 
 
+def _attach_main_image(
+    post: Post,
+    row: dict,
+    *,
+    root: Path,
+    publisher,
+    thumbnail_options: PortBlogThumbnailOptions,
+) -> None:
+    rel = (row.get('image_file') or '').strip()
+    if not rel:
+        return
+    path = blog_scrape.blog_dir(root) / rel
+    image = import_filer_image(path, publisher, label=row.get('title') or row.get('slug', ''))
+    if not image:
+        return
+    post.main_image = image
+    post.main_image_thumbnail = thumbnail_options.list_option
+    post.main_image_full = thumbnail_options.detail_option
+
+
 def _upsert_post(
     config: BlogConfig,
     row: dict,
@@ -229,6 +256,8 @@ def _upsert_post(
     post_text: str,
     external_tag: bool,
     title: str | None = None,
+    root: Path | None = None,
+    thumbnail_options: PortBlogThumbnailOptions | None = None,
 ) -> Post:
     slug = row['slug']
     post = (
@@ -244,6 +273,14 @@ def _upsert_post(
     post.post_text = post_text
     post.publish = not no_publish
     post.date_published = _parse_date(str(row.get('date', '')))
+    if root is not None and thumbnail_options is not None:
+        _attach_main_image(
+            post,
+            row,
+            root=root,
+            publisher=publisher,
+            thumbnail_options=thumbnail_options,
+        )
     post.save()
     ext_tag = Tag.objects.filter(name=EXTERNAL_TAG).first()
     if external_tag:
@@ -266,6 +303,7 @@ def import_news_row(
     publisher,
     no_publish: bool,
     site_base: str,
+    thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     kind = row.get('kind', 'external')
     description = row.get('abstract_html', '')
@@ -292,6 +330,8 @@ def import_news_row(
         abstract_html=abstract,
         post_text='',
         external_tag=True,
+        root=root,
+        thumbnail_options=thumbnail_options,
     )
 
 
@@ -303,6 +343,7 @@ def import_projects_row(
     language: str,
     publisher,
     no_publish: bool,
+    thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     html_path = blog_scrape.project_html_path(root, row['slug'])
     html = html_path.read_text(encoding='utf-8') if html_path.is_file() else ''
@@ -317,6 +358,8 @@ def import_projects_row(
         post_text=body,
         external_tag=False,
         title=title or row.get('title'),
+        root=root,
+        thumbnail_options=thumbnail_options,
     )
 
 
@@ -333,6 +376,7 @@ def import_blog(
     target = BLOG_TARGETS[blog_key]
     ensure_blog_page(target, language, publisher, no_publish)
     config = ensure_blog_config(target, language)
+    thumbnail_options = ensure_port_blog_thumbnail_options()
     if blog_key == 'news':
         rows = load_manifest(blog_scrape.news_manifest_path(root))
         importer = lambda row: import_news_row(
@@ -343,6 +387,7 @@ def import_blog(
             publisher=publisher,
             no_publish=no_publish,
             site_base=site_base,
+            thumbnail_options=thumbnail_options,
         )
     else:
         rows = load_manifest(blog_scrape.projects_manifest_path(root))
@@ -353,6 +398,7 @@ def import_blog(
             language=language,
             publisher=publisher,
             no_publish=no_publish,
+            thumbnail_options=thumbnail_options,
         )
     if slug_filter is not None:
         rows = [row for row in rows if row['slug'] == slug_filter]
