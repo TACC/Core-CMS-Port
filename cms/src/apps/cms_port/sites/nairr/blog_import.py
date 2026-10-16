@@ -419,8 +419,6 @@ def import_blog(
             thumbnail_options=thumbnail_options,
         )
     else:
-        # Manifest rows are oldest-first (see build_projects_manifest_rows); importing
-        # in that order keeps djangocms_blog's date-desc list newest-first.
         rows = load_manifest(blog_scrape.projects_manifest_path(root))
         importer = lambda row: import_projects_row(
             config,
