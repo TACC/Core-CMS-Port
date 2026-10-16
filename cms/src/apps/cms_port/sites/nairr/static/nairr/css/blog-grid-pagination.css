@@ -1,0 +1,15 @@
+/*
+ * Blog list (grid layout): keep pagination on its own row.
+ *
+ * `.blog-list.as-grid` is a CSS grid; `nav.pagination` is a direct child and
+ * otherwise occupies one column. Match the feed header span in Core-CMS.
+ *
+ * TODO: Move to Core-CMS
+ * `taccsite_cms/static/site_cms/css/src/_imports/components/django.cms.blog.app.item.css`
+ * beside `:--news-feed-page--as-grid > header` (or add a `news-feed--as-grid__pagination`
+ * mixin in `_imports/tools/x-news.css`).
+ */
+
+.blog-list.as-grid > nav.pagination {
+  grid-column: 1 / -1;
+}

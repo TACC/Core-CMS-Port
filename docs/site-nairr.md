@@ -34,6 +34,10 @@ PORTAL_STYLES = [
         'is_remote': False,
         'path': 'nairr/css/btn.css',
     },
+    {
+        'is_remote': False,
+        'path': 'nairr/css/blog-grid-pagination.css',
+    },
 ]
 ```
 
@@ -56,6 +60,7 @@ Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
 - `css/annotation.css`
 - `css/btn.css`
 - `css/o-columns.css`
+- `css/blog-grid-pagination.css` (temporary; belongs in Core-CMS blog grid styles)
 - `js/faq-accordion.js`
 
 ## Links
