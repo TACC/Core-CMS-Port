@@ -335,7 +335,8 @@ def import_news_row(
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     kind = row.get('kind', 'external')
-    description = row.get('abstract_html', '')
+    description = blog_scrape.prepare_news_abstract_html(row.get('abstract_html', ''))
+    title = blog_scrape.plain_news_title(row.get('title') or '')
     site_host = urlparse(site_base).netloc
 
     if kind == 'external_hidden':
@@ -359,6 +360,7 @@ def import_news_row(
         abstract_html=abstract,
         post_text='',
         external_tag=True,
+        title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
     )
