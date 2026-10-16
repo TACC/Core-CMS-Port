@@ -5,6 +5,7 @@ from __future__ import annotations
 from cms.models import Page
 
 BLOG_APPHOOK = 'BlogApp'
+GENERATED_CONTAINER_SLUG = 'generated'
 
 
 def _draft(page: Page) -> Page:
@@ -36,6 +37,21 @@ def _find_by_reverse_id(reverse_id: str) -> Page | None:
     return Page.objects.filter(reverse_id=reverse_id).first()
 
 
+def _generated_draft(registry) -> Page | None:
+    page = _find_by_reverse_id(registry.reverse_id_for_slug(GENERATED_CONTAINER_SLUG))
+    return _draft(page) if page else None
+
+
+def is_under_generated(page: Page, registry) -> bool:
+    generated = _generated_draft(registry)
+    if not generated:
+        return False
+    draft = _draft(page)
+    if draft.pk == generated.pk:
+        return True
+    return draft.node.path.startswith(generated.node.path)
+
+
 def _pick_child(candidates, slug_part, language, *, spec, registry):
     matching = [p for p in candidates if _title_path(p, language) == slug_part]
     if not matching:
@@ -62,7 +78,12 @@ def _pick_child(candidates, slug_part, language, *, spec, registry):
 
 
 def find_page_for_registry_slug(slug: str, language: str, registry) -> Page | None:
-    """Find a draft/public page for a registry slug, including path-only matches."""
+    """Find a draft/public page for a registry slug, including path-only matches.
+
+    Path-only matches are scoped to the ``Generated`` subtree, so this never adopts
+    ``create_blog``'s root-only ancestor stubs (``blog_root_stub_reverse_id``), which share
+    a title path (e.g. ``news``) with their Generated counterpart but must stay distinct.
+    """
     spec = registry.spec_by_slug(slug)
     if not spec:
         return None
@@ -74,7 +95,7 @@ def find_page_for_registry_slug(slug: str, language: str, registry) -> Page | No
     if not segments:
         return None
 
-    parent: Page | None = None
+    parent: Page | None = _generated_draft(registry)
     for index, slug_part in enumerate(segments):
         partial_slug = '/'.join(segments[: index + 1])
         partial_spec = registry.spec_by_slug(partial_slug)
@@ -84,6 +105,20 @@ def find_page_for_registry_slug(slug: str, language: str, registry) -> Page | No
             return None
         parent = page
     return parent
+
+
+BLOG_ROOT_STUB_SUFFIX = '-root'
+
+
+def blog_root_stub_reverse_id(slug: str, registry) -> str:
+    """Reverse id for an ancestor page that exists only to host a blog apphook page at site root.
+
+    Distinct from ``registry.reverse_id_for_slug(slug)`` so this stub never collides with, or gets
+    deleted/recreated alongside, the same registry slug's page under Generated while that page is
+    still pending editor review (see ``create_pages``' ``--replace`` full-run reset).
+    """
+    base = registry.reverse_id_for_slug(slug)
+    return base[: 40 - len(BLOG_ROOT_STUB_SUFFIX)] + BLOG_ROOT_STUB_SUFFIX
 
 
 def adopt_registry_reverse_id(page: Page, slug: str, registry, publisher) -> Page:
