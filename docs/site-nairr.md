@@ -12,6 +12,11 @@ Local instances take `settings_custom.py` from the shared [`cms.settings_custom.
 ```py
 PORTAL_SCRAPE_SITE = 'nairr'
 
+PORTAL_BLOG_LIST_LAYOUT = {
+    'News': 'list',
+    'Project Highlights': 'grid',
+}
+
 PORTAL_STYLES = [
     {
         'is_remote': True,
