@@ -19,6 +19,7 @@ from django.core.management.base import BaseCommand, CommandError
 from cms.api import create_page, publish_page
 from cms.models import Page
 
+from apps.cms_port.common.registry_pages import adopt_registry_reverse_id, find_page_for_registry_slug
 from apps.cms_port.site_loader import load_site
 
 GENERATED_CONTAINER_SLUG = 'generated'
@@ -72,6 +73,13 @@ class Command(BaseCommand):
         language = settings.LANGUAGE_CODE
         scrape_root = scrape_lib.scrape_root(settings)
 
+        if options['slug'] is not None:
+            slug_spec = page_registry.spec_by_slug(options['slug'])
+            if slug_spec and slug_spec.pattern == 'blog':
+                raise CommandError(
+                    f'Blog page {options["slug"]!r} is created with create_blog, not create_pages.'
+                )
+
         User = get_user_model()
         publisher = User.objects.filter(is_superuser=True).first()
         if not publisher and not options['dry_run']:
@@ -90,6 +98,8 @@ class Command(BaseCommand):
             if not spec:
                 raise CommandError(f'Unknown page slug: {options["slug"]!r}')
             specs = page_registry.expand_specs_with_ancestors([spec])
+
+        specs = [spec for spec in specs if spec.pattern != 'blog']
 
         replace_page_slug = None
         if options['slug'] is not None:
@@ -131,9 +141,15 @@ class Command(BaseCommand):
                 self._delete_drafts(reverse_id)
 
             existing = Page.objects.drafts().filter(reverse_id=reverse_id).first()
+            if not existing:
+                found = find_page_for_registry_slug(spec.slug, language, page_registry)
+                if found:
+                    existing = adopt_registry_reverse_id(
+                        found, spec.slug, page_registry, publisher
+                    )
             if existing:
                 page = existing
-                self.stdout.write(f'Using existing draft for {spec.slug or "home"}')
+                self.stdout.write(f'Using existing page for {spec.slug or "home"}')
             else:
                 create_kwargs = dict(
                     title=spec.title,
@@ -160,14 +176,7 @@ class Command(BaseCommand):
 
             page_by_slug[spec.slug] = page
 
-            if spec.pattern in ('section_parent', 'empty', 'blog'):
-                if spec.pattern == 'blog':
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f'Attach djangocms_blog apphook to {spec.slug} in CMS admin.'
-                        )
-                    )
-            else:
+            if spec.pattern not in ('top_level_page', 'empty'):
                 placeholder = page.placeholders.get(slot='content')
                 import_pages.populate_page_content(spec, placeholder, language, scrape_root)
 
@@ -427,7 +436,7 @@ class Command(BaseCommand):
         return self._get_generated_container(page_by_slug, page_registry)
 
     def _replace_deletes_draft(self, spec, *, replace_page_slug: str | None) -> bool:
-        """With ``--slug``, only delete the target page—not ancestor section folders (and their siblings)."""
+        """With ``--slug``, only delete the target page—not ancestor top-level pages (and their siblings)."""
         if replace_page_slug is None:
             return True
         if replace_page_slug == 'home':

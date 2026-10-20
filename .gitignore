@@ -60,8 +60,8 @@ dist/
 # vscode
 .vscode/
 
-# scraped HTML (port pipeline)
-cms/scraped/
+# scraped HTML (port pipeline; path may be a dir or symlink for local Docker)
+cms/scraped
 
 # vim stuff
 *.swp

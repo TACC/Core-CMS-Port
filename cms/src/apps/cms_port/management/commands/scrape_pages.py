@@ -70,13 +70,17 @@ class Command(BaseCommand):
             if not specs_for_tested:
                 raise CommandError('This site page registry has no specs_for_tested().')
             for spec in specs_for_tested():
-                if spec.pattern == 'section_parent':
+                if spec.pattern in ('top_level_page', 'blog'):
                     continue
                 path = 'home' if spec.pattern == 'home' else spec.scrape_path
                 if path not in paths:
                     paths.append(path)
         elif options['slug']:
             spec = page_registry.spec_by_slug(options['slug'])
+            if spec and spec.pattern == 'blog':
+                raise CommandError(
+                    f'Blog page {options["slug"]!r} is scraped with scrape_blog, not scrape_pages.'
+                )
             if spec and spec.pattern == 'home':
                 paths = ['home']
             elif spec:

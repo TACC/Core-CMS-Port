@@ -1,0 +1,34 @@
+/* TODO: Integrate into Core-CMS */
+/* SEE: taccsite_cms/static/site_cms/css/src/_imports/components/django.cms.blog.app.item.css */
+/* SEE: _imports/tools/x-news.css */
+
+.blog-list.as-grid {
+  /* Text-only cards (empty `.blog-visual`): never more than two columns */
+  &:not(:has(.blog-visual:not(:empty))) {
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* To prevent truncation of list items */
+  & .blog-lead {
+    max-height: unset;
+  }
+
+  & .pagination {
+    /* To keep pagination on its own row */
+    grid-column: 1 / -1;
+
+    /* To remove deliniation above pagination */
+    border-top: unset;
+    margin-top: unset;
+  }
+
+  /* To reduce space to look similar to `.as-list` */
+  &:has(.pagination) {
+    margin-bottom: unset;
+  }
+  & .pagination {
+    margin-bottom: var(--global-space--large);
+  }
+}
