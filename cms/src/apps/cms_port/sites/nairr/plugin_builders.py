@@ -288,14 +288,27 @@ def _add_article_text_plugins_from_html(
             )
             _note_section(section)
         else:
-            _flush_pending_h1_section()
-            section = builder.add_section(
-                parent,
-                MUTED_SECTION,
-                tag_type='div',
-            )
+            body_parts = []
+            if pending_h1:
+                body_parts.append(pending_h1)
+                pending_h1 = None
+            body_parts.append(chunk)
+            combined = ''.join(body_parts)
+            if body_parts and _chunk_leading_tag(body_parts[0]) == 'h1':
+                section = builder.add_section(
+                    parent,
+                    GRID_CONTAINER_TYPE_SECTION,
+                    tag_type='section',
+                    label=nairr_section_label_from_chunk(combined),
+                )
+            else:
+                section = builder.add_section(
+                    parent,
+                    MUTED_SECTION,
+                    tag_type='div',
+                )
             _add_html_with_article_embeds(
-                builder, section, chunk, page_slug=page_slug
+                builder, section, combined, page_slug=page_slug
             )
             _note_section(section)
 
