@@ -23,7 +23,8 @@ def pilot_resources_snippet_html() -> str:
 	};
 })();
 </script>
-<script defer src="{% static 'nairr/js/pilot-resources.js' %}"></script>"""
+<script defer src="{% static 'nairr/js/pilot-resources.js' %}"></script>
+<script defer src="{% static 'nairr/js/pilot-resources-enhance.js' %}"></script>"""
 
 
 def pilot_resources_snippet_for_page(page_slug: str | None) -> tuple[str, str, str] | None:
