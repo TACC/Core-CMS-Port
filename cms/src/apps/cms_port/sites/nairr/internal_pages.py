@@ -25,12 +25,16 @@ SLUG_ALIASES = {'pilotevents': 'news/events'}
 
 
 def _blank_spec_for_child(slug):
-    """Spec for an unregistered page whose parent is registered, else ``None``."""
+    """Spec for an unregistered page: a child of a registered parent, or (for a bare
+    top-level slug with no registered parent) a page directly under Generated.
+    """
     parent_slug = slug.rpartition('/')[0]
-    if not parent_slug or not spec_by_slug(parent_slug):
-        return None
-    leaf = slug.rpartition('/')[2]
-    return PageSpec(slug, leaf.replace('-', ' ').title(), 'standard.html', '', 'empty', parent_slug=parent_slug)
+    if parent_slug:
+        if not spec_by_slug(parent_slug):
+            return None
+        leaf = slug.rpartition('/')[2]
+        return PageSpec(slug, leaf.replace('-', ' ').title(), 'standard.html', '', 'empty', parent_slug=parent_slug)
+    return PageSpec(slug, slug.replace('-', ' ').title(), 'standard.html', '', 'empty')
 
 
 def _get_or_create_page(spec, language, registered=True, create=True):

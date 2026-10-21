@@ -1,7 +1,9 @@
-from django.test import SimpleTestCase
-from django.utils import timezone
+from datetime import timezone
 
-from apps.cms_port.sites.nairr.blog_import import _parse_date
+from django.test import SimpleTestCase
+from django.utils import timezone as django_timezone
+
+from apps.cms_port.sites.nairr.blog_import import _parse_date, _resolve_post_datetime
 
 
 class BlogImportDateTests(SimpleTestCase):
@@ -22,4 +24,26 @@ class BlogImportDateTests(SimpleTestCase):
         self.assertEqual(parsed.year, 2025)
         self.assertEqual(parsed.month, 9)
         self.assertEqual(parsed.day, 3)
-        self.assertTrue(timezone.is_aware(parsed))
+        self.assertTrue(django_timezone.is_aware(parsed))
+
+    def test_resolve_post_datetime_uses_same_day_order_to_break_ties(self):
+        later = _resolve_post_datetime({'date': 'March 31, 2026', 'same_day_order': 1})
+        earlier = _resolve_post_datetime({'date': 'March 31, 2026', 'same_day_order': 0})
+        self.assertEqual(earlier.date(), later.date())
+        self.assertLess(earlier, later)
+
+    def test_resolve_post_datetime_stays_on_day_for_realistic_same_day_counts(self):
+        # The News feed has never had more than 2 posts share a display date, far under
+        # the 8-slot ceiling; confirm the stored UTC day doesn't shift for that range.
+        for same_day_order in range(0, 2):
+            resolved = _resolve_post_datetime(
+                {'date': 'September 3, 2025', 'same_day_order': same_day_order}
+            )
+            self.assertEqual(resolved.astimezone(timezone.utc).day, 3)
+
+    def test_resolve_post_datetime_falls_back_to_display_date_without_order(self):
+        resolved = _resolve_post_datetime({'date': 'September 3, 2025'})
+        self.assertEqual(resolved.year, 2025)
+        self.assertEqual(resolved.month, 9)
+        self.assertEqual(resolved.day, 3)
+        self.assertEqual(resolved.hour, 0)

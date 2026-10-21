@@ -156,6 +156,29 @@ def _fetch_json(session: requests.Session, url: str) -> list | dict:
     return response.json()
 
 
+# Joomla ``nDate`` values that are not a real calendar date (e.g. a recurring schedule
+# description), keyed by Joomla item id, replaced with a manually-sourced display date.
+NEWS_DATE_OVERRIDES: dict[int, str] = {
+    # "2nd Tuesday of every month, 12 PM PT/3 PM ET..." — dated from the Dec 17, 2024,
+    # 3-4pm ET occurrence: https://support.access-ci.org/events/7640
+    2: 'December 17, 2024',
+}
+
+# For items in ``NEWS_DATE_OVERRIDES``, the original (non-calendar) ``nDate`` text is
+# recurring-schedule info worth keeping; it's moved into the abstract as a bold lead-in.
+NEWS_ABSTRACT_LEAD_INS: dict[int, str] = {
+    2: '2nd Tuesday of every month, 12 PM PT/3 PM ET (subject to change for holidays or '
+    'special events',
+}
+
+
+def _with_abstract_lead_in(post_id: int, abstract_html: str) -> str:
+    lead_in = NEWS_ABSTRACT_LEAD_INS.get(post_id)
+    if not lead_in:
+        return abstract_html
+    return f'<p><strong>{lead_in}</strong></p>{abstract_html}'
+
+
 def build_news_manifest_rows(items: list) -> list[dict]:
     rows = []
     for item in items:
@@ -165,14 +188,38 @@ def build_news_manifest_rows(items: list) -> list[dict]:
                 'slug': str(post_id),
                 'id': post_id,
                 'title': plain_news_title(item.get('nName', '')),
-                'date': (item.get('nDate') or '').strip()
+                'date': NEWS_DATE_OVERRIDES.get(post_id)
+                or (item.get('nDate') or '').strip()
                 or item.get('nDatePublished')
                 or '',
-                'abstract_html': prepare_news_abstract_html(item.get('nDescription', '')),
+                'abstract_html': _with_abstract_lead_in(
+                    post_id, prepare_news_abstract_html(item.get('nDescription', ''))
+                ),
                 'kind': news_kind(item),
             }
         )
+    _assign_same_day_order(rows)
     return rows
+
+
+def _assign_same_day_order(rows: list[dict]) -> None:
+    """Rank rows sharing the same display ``date`` by their feed order (``items`` is
+    newest-first), so same-day posts keep their original relative order on import.
+
+    ``nDate`` alone can't express same-day order, and ``nDatePublished`` is often a
+    bulk-resave timestamp that's unsafe to use directly (its time-of-day can push the
+    stored UTC date to the next calendar day). ``same_day_order`` is a small rank used
+    only as a tie-breaker, never as a real time-of-day.
+    """
+    groups: dict[str, list[int]] = {}
+    for index, row in enumerate(rows):
+        groups.setdefault(row['date'], []).append(index)
+    for indices in groups.values():
+        if len(indices) < 2:
+            continue
+        count = len(indices)
+        for rank, index in enumerate(indices):
+            rows[index]['same_day_order'] = count - 1 - rank
 
 
 def build_projects_manifest_rows(items: list, base: str) -> list[dict]:
@@ -276,12 +323,28 @@ def first_offsite_href(html: str, site_host: str) -> str | None:
 
 
 def visible_teaser_html(description: str) -> str:
+    """Strip only the hidden-redirect CTA link (e.g. "Learn more at NSF.gov",
+    "Watch the video"), leaving unrelated inline links (e.g. a "webinar" link
+    that happens to share the same URL) intact.
+    """
     soup = BeautifulSoup(f'<div>{description}</div>', 'lxml')
     root = soup.select_one('div')
     if not root:
         return description.strip()
     for anchor in root.select('a[href^="http"]'):
+        text = anchor.get_text(strip=True)
+        is_cta_anchor = any(text.startswith(marker) for marker in HIDDEN_CTA_MARKERS)
+        lead_in = anchor.previous_sibling
+        has_lead_in = isinstance(lead_in, NavigableString) and lead_in.strip().endswith('Learn more at')
+        if not (is_cta_anchor or has_lead_in):
+            continue
+        if has_lead_in:
+            trimmed = lead_in[: lead_in.rfind('Learn more at')].rstrip()
+            lead_in.replace_with(trimmed)
+        parent = anchor.parent
         anchor.decompose()
+        if isinstance(parent, Tag) and parent.name == 'p' and not parent.get_text(strip=True) and not parent.find(True):
+            parent.decompose()
     text = root.decode_contents().strip()
     return text or description.strip()
 
