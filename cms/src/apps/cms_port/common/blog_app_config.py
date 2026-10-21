@@ -1,9 +1,4 @@
-"""Shared djangocms_blog AppHook config for Core-CMS-Port imports.
-
-Today this module only seeds Filer thumbnail options and applies default list/detail
-thumbnail choices on ``BlogConfig``. Additional TACC overrides (menu, Knock, etc.) belong
-in a follow-up change to ``apply_port_blog_config``.
-"""
+"""Shared djangocms_blog AppHook config for Core-CMS-Port imports."""
 
 from __future__ import annotations
 
@@ -24,6 +19,16 @@ PORT_BLOG_THUMBNAIL_OPTION_SPECS: tuple[tuple[str, int, int, bool, bool], ...] =
 
 PORT_BLOG_LIST_THUMBNAIL_NAME = 'News Feed Page (Crop, Scale)'
 PORT_BLOG_DETAIL_THUMBNAIL_NAME = 'News Article Page - Large (No Crop, No Scale)'
+
+# Values that differ from djangocms_blog package defaults (per-field ``initial`` on the form).
+PORT_BLOG_APP_CONFIG_OVERRIDES: dict[str, object] = {
+    'use_placeholder': True,
+    'use_related': False,
+    'menu_structure': 'none',
+    'menu_empty_categories': False,
+    'send_knock_create': True,
+    'send_knock_update': True,
+}
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,12 @@ def ensure_port_blog_thumbnail_options() -> PortBlogThumbnailOptions:
     )
 
 
+def apply_port_blog_app_config(config: BlogConfig) -> None:
+    """Apply TACC blog apphook settings that differ from djangocms_blog defaults."""
+    for key, value in PORT_BLOG_APP_CONFIG_OVERRIDES.items():
+        setattr(config.app_data.config, key, value)
+
+
 def apply_port_blog_thumbnail_config(config: BlogConfig) -> PortBlogThumbnailOptions:
     """Ensure Filer thumbnails exist and set ``BlogConfig`` default image sizes."""
     options = ensure_port_blog_thumbnail_options()
@@ -58,3 +69,9 @@ def apply_port_blog_thumbnail_config(config: BlogConfig) -> PortBlogThumbnailOpt
     config.app_data.config.default_image_full = options.detail_option
     config.save()
     return options
+
+
+def apply_port_blog_config(config: BlogConfig) -> PortBlogThumbnailOptions:
+    """Apply all shared port blog ``BlogConfig`` settings (app + thumbnails)."""
+    apply_port_blog_app_config(config)
+    return apply_port_blog_thumbnail_config(config)

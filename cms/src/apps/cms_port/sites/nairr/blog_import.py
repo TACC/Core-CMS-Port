@@ -21,9 +21,10 @@ from djangocms_blog.models import BlogConfig, Post
 
 from apps.cms_port.common.blog_app_config import (
     PortBlogThumbnailOptions,
-    apply_port_blog_thumbnail_config,
+    apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
+from apps.cms_port.common.blog_body import populate_blog_post_body_from_html
 from apps.cms_port.common.filer_assets import import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
@@ -31,6 +32,10 @@ from apps.cms_port.common.registry_pages import (
     find_page_for_registry_slug,
 )
 from apps.cms_port.sites.nairr import blog_scrape
+from apps.cms_port.sites.nairr.blog_site_config import (
+    apply_nairr_blog_app_config,
+    ensure_nairr_no_drop_cap_tag,
+)
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
 from apps.cms_port.sites.nairr.page_registry import spec_by_slug
@@ -71,7 +76,7 @@ def _parse_date(value: str):
     parsed = parse_datetime(value.strip())
     if parsed:
         return timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
-    for fmt in ('%B %d, %Y',):
+    for fmt in ('%B %d, %Y', '%b %d, %Y'):
         try:
             parsed = datetime.strptime(value.strip(), fmt)
             return timezone.make_aware(parsed)
@@ -146,7 +151,9 @@ def ensure_blog_config(target: BlogTarget, language: str) -> BlogConfig:
     config.set_current_language(language)
     config.app_title = target.app_title
     config.save()
-    apply_port_blog_thumbnail_config(config)
+    apply_port_blog_config(config)
+    apply_nairr_blog_app_config(config)
+    config.save()
     return config
 
 
@@ -288,6 +295,7 @@ def _upsert_post(
         post.tags.add(tag)
     elif ext_tag:
         post.tags.remove(ext_tag)
+    post.tags.add(ensure_nairr_no_drop_cap_tag())
     if not no_publish:
         post.publish = True
         post.save()
@@ -343,24 +351,39 @@ def import_projects_row(
     language: str,
     publisher,
     no_publish: bool,
+    site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     html_path = blog_scrape.project_html_path(root, row['slug'])
     html = html_path.read_text(encoding='utf-8') if html_path.is_file() else ''
     title, body = _split_title_body(html) if html else ('', '')
-    return _upsert_post(
+    if body:
+        body = _rewrite_internal_hrefs(body, language, site_base)
+    post = _upsert_post(
         config,
         row,
         language=language,
         publisher=publisher,
         no_publish=no_publish,
         abstract_html='',
-        post_text=body,
+        post_text='',
         external_tag=False,
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
     )
+    populate_blog_post_body_from_html(
+        post,
+        body,
+        language,
+        publisher,
+        internal_page_for_url=lambda path, create=False: internal_page_for_url(
+            path, language, create=create
+        ),
+        rewrite_url=rewrite_support_url,
+        site_base=site_base,
+    )
+    return post
 
 
 def import_blog(
@@ -398,6 +421,7 @@ def import_blog(
             language=language,
             publisher=publisher,
             no_publish=no_publish,
+            site_base=site_base,
             thumbnail_options=thumbnail_options,
         )
     if slug_filter is not None:

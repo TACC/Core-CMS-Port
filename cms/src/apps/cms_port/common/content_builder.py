@@ -475,6 +475,70 @@ class ContentBuilder:
         plugin.save()
         return plugin
 
+    def add_text_link(
+        self,
+        parent,
+        *,
+        name: str,
+        url: str,
+        link_target: str = '',
+        create_missing_page: bool = False,
+    ):
+        """Bootstrap4 Link plugin (``link_type='link'``) for in-flow blog CTAs."""
+        link_target_kwargs = self._link_target_kwargs(url, create_missing_page)
+        plugin = add_plugin(
+            self.placeholder,
+            'Bootstrap4LinkPlugin',
+            self.language,
+            target=parent,
+            name=name,
+            **link_target_kwargs,
+            link_type='link',
+        )
+        if link_target:
+            plugin.target = link_target
+        plugin.full_clean()
+        plugin.save()
+        return plugin
+
+    def add_picture(
+        self,
+        parent,
+        *,
+        filer_image=None,
+        external_url: str = '',
+        alt: str = '',
+        caption: str = '',
+        link_url: str = '',
+        link_target: str = '',
+    ):
+        """Picture / Image (Responsive) plugin — ``Bootstrap4PicturePlugin``, not generic ``Image``."""
+        if not filer_image and not external_url:
+            return None
+        attributes = {'alt': alt} if alt else {}
+        template = 'default' if link_url else 'no_link_to_ext_image'
+        kwargs = {
+            'template': template,
+            'attributes': attributes,
+            'caption_text': caption or '',
+            'link_url': link_url or '',
+            'link_target': link_target or '',
+        }
+        if filer_image:
+            kwargs['picture'] = filer_image
+        else:
+            kwargs['external_picture'] = external_url
+        plugin = add_plugin(
+            self.placeholder,
+            'Bootstrap4PicturePlugin',
+            self.language,
+            target=parent,
+            **kwargs,
+        )
+        plugin.full_clean()
+        plugin.save()
+        return plugin
+
     def add_snippet_script(self, parent, *, slug: str, name: str, static_path: str):
         """Add a <script src> tag via djangocms_snippet, keyed by slug so re-imports reuse it."""
         snippet, created = Snippet.objects.get_or_create(

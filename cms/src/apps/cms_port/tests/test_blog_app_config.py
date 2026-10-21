@@ -8,3 +8,11 @@ class PortBlogThumbnailSpecTests(SimpleTestCase):
         names = {row[0] for row in blog_app_config.PORT_BLOG_THUMBNAIL_OPTION_SPECS}
         self.assertIn(blog_app_config.PORT_BLOG_LIST_THUMBNAIL_NAME, names)
         self.assertIn(blog_app_config.PORT_BLOG_DETAIL_THUMBNAIL_NAME, names)
+
+    def test_app_config_overrides_differ_from_package_defaults(self):
+        self.assertTrue(blog_app_config.PORT_BLOG_APP_CONFIG_OVERRIDES['use_placeholder'])
+        self.assertFalse(blog_app_config.PORT_BLOG_APP_CONFIG_OVERRIDES['use_related'])
+        self.assertEqual(
+            blog_app_config.PORT_BLOG_APP_CONFIG_OVERRIDES['menu_structure'],
+            'none',
+        )
