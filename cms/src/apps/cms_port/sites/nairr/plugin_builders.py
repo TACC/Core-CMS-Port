@@ -51,7 +51,7 @@ def _add_html_with_article_embeds(
     *,
     page_slug: str | None,
 ) -> None:
-    """Text plugin(s) plus Snippet embeds where the scrape had dynamic mounts.
+    """Text plugin(s) plus Snippet embeds where the scrape had dynamic embeds.
 
     XRAS ``renderCatalog`` options: {readme}
     """.format(readme=RESOURCE_CATALOG_README_URL)

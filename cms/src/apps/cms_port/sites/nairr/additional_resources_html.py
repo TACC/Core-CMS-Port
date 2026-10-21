@@ -1,4 +1,4 @@
-"""Split scraped article HTML around the ``<div id="app">`` additional-resources listing mount."""
+"""Split scraped article HTML around the additional-resources embed (``<div id="app">``)."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ def _node_list_html(nodes: list) -> str:
     return ''.join(str(node) for node in nodes).strip()
 
 
-def split_html_at_additional_resources_mount(html: str) -> list:
-    """Return segments with ``ADDITIONAL_RESOURCES_SEGMENT`` where ``div#app`` was in the scrape."""
+def split_html_at_additional_resources(html: str) -> list:
+    """Return segments with ``ADDITIONAL_RESOURCES_SEGMENT`` where the embed (``div#app``) was in the scrape."""
     html = (html or '').strip()
     if not html:
         return []
