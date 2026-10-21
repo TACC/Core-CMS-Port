@@ -165,7 +165,9 @@ def build_news_manifest_rows(items: list) -> list[dict]:
                 'slug': str(post_id),
                 'id': post_id,
                 'title': plain_news_title(item.get('nName', '')),
-                'date': item.get('nDatePublished') or item.get('nDate', ''),
+                'date': (item.get('nDate') or '').strip()
+                or item.get('nDatePublished')
+                or '',
                 'abstract_html': prepare_news_abstract_html(item.get('nDescription', '')),
                 'kind': news_kind(item),
             }

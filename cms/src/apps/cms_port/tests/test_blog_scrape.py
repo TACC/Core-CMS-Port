@@ -75,3 +75,14 @@ class BlogScrapeKindTests(SimpleTestCase):
             'offering <a href="https://example.test/x">resources</a>.</p>'
         )
         self.assertEqual(blog_scrape.prepare_news_abstract_html(html), html)
+
+    def test_build_news_manifest_prefers_display_n_date(self):
+        item = {
+            'id': 10,
+            'nDate': 'Jan 20, 2026',
+            'nDatePublished': '2026-04-09 01:10:20',
+            'nName': 'Templates',
+            'nDescription': '<p>Body</p>',
+        }
+        row = blog_scrape.build_news_manifest_rows([item])[0]
+        self.assertEqual(row['date'], 'Jan 20, 2026')

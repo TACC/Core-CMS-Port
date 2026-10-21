@@ -73,7 +73,7 @@ def _parse_date(value: str):
     parsed = parse_datetime(value.strip())
     if parsed:
         return timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
-    for fmt in ('%B %d, %Y',):
+    for fmt in ('%B %d, %Y', '%b %d, %Y'):
         try:
             parsed = datetime.strptime(value.strip(), fmt)
             return timezone.make_aware(parsed)
