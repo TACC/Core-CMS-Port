@@ -1,7 +1,7 @@
 (function () {
 	/**
 	 * Core-Styles bootstrap--nav-tabs: ul.nav.nav-tabs > li.nav-item > a.nav-link.active
-	 * The showcase app toggles `.selected`; we mirror that to `.active`.
+	 * The vendored additional-resources script toggles `.selected`; we mirror that to `.active`.
 	 */
 	var observer = null;
 
@@ -17,7 +17,7 @@
 			a.classList.add('nav-link');
 			a.setAttribute('role', 'tab');
 			if (!a.id) {
-				a.id = 'pilotresources-tab-' + (a.getAttribute('data-cat') || index);
+				a.id = 'additional-resources-tab-' + (a.getAttribute('data-cat') || index);
 			}
 		});
 	}

@@ -20,12 +20,14 @@ from apps.cms_port.common.html_text import (
     prepare_article_html_chunk,
     split_html_for_cms_text_plugins,
 )
+from apps.cms_port.sites.nairr.additional_resources_snippets import (
+    additional_resources_snippet_for_page,
+)
 from apps.cms_port.sites.nairr.article_embed_html import (
-    PILOT_RESOURCES_SEGMENT,
+    ADDITIONAL_RESOURCES_SEGMENT,
     RESOURCE_CATALOG_SEGMENT,
     split_html_at_article_embeds,
 )
-from apps.cms_port.sites.nairr.pilot_resources_snippets import pilot_resources_snippet_for_page
 from apps.cms_port.sites.nairr.resource_catalog_snippets import (
     RESOURCE_CATALOG_README_URL,
     resource_catalog_snippet_for_page,
@@ -54,16 +56,16 @@ def _add_html_with_article_embeds(
     XRAS ``renderCatalog`` options: {readme}
     """.format(readme=RESOURCE_CATALOG_README_URL)
     catalog_snippet = resource_catalog_snippet_for_page(page_slug)
-    pilot_snippet = pilot_resources_snippet_for_page(page_slug)
+    additional_resources_snippet = additional_resources_snippet_for_page(page_slug)
     for segment in split_html_at_article_embeds(html):
         if segment is RESOURCE_CATALOG_SEGMENT:
             if catalog_snippet:
                 slug, name, body = catalog_snippet
                 builder.add_snippet_html(parent, slug=slug, name=name, html=body)
             continue
-        if segment is PILOT_RESOURCES_SEGMENT:
-            if pilot_snippet:
-                slug, name, body = pilot_snippet
+        if segment is ADDITIONAL_RESOURCES_SEGMENT:
+            if additional_resources_snippet:
+                slug, name, body = additional_resources_snippet
                 builder.add_snippet_html(parent, slug=slug, name=name, html=body)
             continue
         prepared = _prepare_html(segment)

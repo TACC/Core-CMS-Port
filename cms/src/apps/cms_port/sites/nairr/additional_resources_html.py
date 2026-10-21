@@ -1,24 +1,24 @@
-"""Split scraped article HTML around the pilot resources showcase mount."""
+"""Split scraped article HTML around the ``<div id="app">`` additional-resources listing mount."""
 
 from __future__ import annotations
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 
-PILOT_RESOURCES_SEGMENT = object()
+ADDITIONAL_RESOURCES_SEGMENT = object()
 
 
 def _node_list_html(nodes: list) -> str:
     return ''.join(str(node) for node in nodes).strip()
 
 
-def split_html_at_pilot_resources_app(html: str) -> list:
-    """Return segments with ``PILOT_RESOURCES_SEGMENT`` where ``div#app`` was in the scrape."""
+def split_html_at_additional_resources_mount(html: str) -> list:
+    """Return segments with ``ADDITIONAL_RESOURCES_SEGMENT`` where ``div#app`` was in the scrape."""
     html = (html or '').strip()
     if not html:
         return []
 
-    soup = BeautifulSoup(f'<div data-nairr-pilot-split>{html}</div>', 'lxml')
-    root = soup.select_one('div[data-nairr-pilot-split]')
+    soup = BeautifulSoup(f'<div data-nairr-additional-resources-split>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-additional-resources-split]')
     if not root:
         return [html]
 
@@ -44,7 +44,7 @@ def split_html_at_pilot_resources_app(html: str) -> list:
     segments: list = []
     if before:
         segments.append(before)
-    segments.append(PILOT_RESOURCES_SEGMENT)
+    segments.append(ADDITIONAL_RESOURCES_SEGMENT)
     if after:
         segments.append(after)
     return segments

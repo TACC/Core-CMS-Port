@@ -1,4 +1,6 @@
-/* Pilot resources showcase (com_pilotresources). Layout + accordion; tabs/pagination use Core-Styles. */
+/* Additional resources listing (Joomla com_pilotresources component). Layout + accordion;
+   tabs/pagination use Core-Styles. `.showcase`/`.showcase-*` selectors match classes the
+   vendored script renders — do not rename them independently of that script. */
 
 #app .vh {
 	clip: rect(1px, 1px, 1px, 1px);
