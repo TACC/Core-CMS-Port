@@ -48,7 +48,9 @@ Scrape third-party pages, then import into django CMS.
 - Prefer extending existing `plugin_builders` / `page_registry` paths for the page at hand.
 - **`create_pages` Generated tree (all sites):** After import, every page under **Generated** gets `in_navigation=True`. Each **direct child** of **Generated** that has child pages but no content plugins redirects to its first child (folder-only section rows). The **Generated** container itself is hidden from navigation unless you pass **`--show-generated-in-nav`**, which you should **always** pass when running `create_pages` locally.
 
-#### CMS plugins (port import and docs)
+#### CMS Plugins
+
+##### Images
 
 - For **in-page media**, use **Picture / Image (Responsive)** — ``Bootstrap4PicturePlugin`` in code (`ContentBuilder.add_picture`). Do **not** add the generic **Image** plugin (`PicturePlugin`, editor label “Image”); it lacks Bootstrap picture features Core-CMS sites rely on.
 - Exception: only use generic **Image** when the content truly cannot use responsive picture options (rare; confirm with a human before import code does this).
