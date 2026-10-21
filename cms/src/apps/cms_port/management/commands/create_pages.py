@@ -73,6 +73,13 @@ class Command(BaseCommand):
         language = settings.LANGUAGE_CODE
         scrape_root = scrape_lib.scrape_root(settings)
 
+        if options['slug'] is not None:
+            slug_spec = page_registry.spec_by_slug(options['slug'])
+            if slug_spec and slug_spec.pattern == 'blog':
+                raise CommandError(
+                    f'Blog page {options["slug"]!r} is created with create_blog, not create_pages.'
+                )
+
         User = get_user_model()
         publisher = User.objects.filter(is_superuser=True).first()
         if not publisher and not options['dry_run']:
@@ -91,6 +98,8 @@ class Command(BaseCommand):
             if not spec:
                 raise CommandError(f'Unknown page slug: {options["slug"]!r}')
             specs = page_registry.expand_specs_with_ancestors([spec])
+
+        specs = [spec for spec in specs if spec.pattern != 'blog']
 
         replace_page_slug = None
         if options['slug'] is not None:
@@ -167,14 +176,7 @@ class Command(BaseCommand):
 
             page_by_slug[spec.slug] = page
 
-            if spec.pattern in ('top_level_page', 'empty', 'blog'):
-                if spec.pattern == 'blog':
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f'Attach djangocms_blog apphook to {spec.slug} in CMS admin.'
-                        )
-                    )
-            else:
+            if spec.pattern not in ('top_level_page', 'empty'):
                 placeholder = page.placeholders.get(slot='content')
                 import_pages.populate_page_content(spec, placeholder, language, scrape_root)
 
@@ -428,8 +430,6 @@ class Command(BaseCommand):
             if page:
                 page_by_slug[spec.parent_slug] = page
                 return page
-            return None
-        if spec.pattern in ('top_level_page', 'home'):
             return None
         if generated_container is not None:
             return generated_container

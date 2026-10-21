@@ -20,9 +20,13 @@ from apps.cms_port.common.html_text import (
     prepare_article_html_chunk,
     split_html_for_cms_text_plugins,
 )
-from apps.cms_port.sites.nairr.resource_catalog_html import (
+from apps.cms_port.sites.nairr.additional_resources_snippets import (
+    additional_resources_snippet_for_page,
+)
+from apps.cms_port.sites.nairr.article_embed_html import (
+    ADDITIONAL_RESOURCES_SEGMENT,
     RESOURCE_CATALOG_SEGMENT,
-    split_html_at_resource_catalog,
+    split_html_at_article_embeds,
 )
 from apps.cms_port.sites.nairr.resource_catalog_snippets import (
     RESOURCE_CATALOG_README_URL,
@@ -40,22 +44,28 @@ def _prepare_html(html: str) -> str:
     return rewrite_lead_to_annotation(prepare_article_html_chunk(html))
 
 
-def _add_html_with_resource_catalog(
+def _add_html_with_article_embeds(
     builder: ContentBuilder,
     parent,
     html: str,
     *,
     page_slug: str | None,
 ) -> None:
-    """Text plugin(s) plus optional XRAS catalog Snippet where the scrape embedded it.
+    """Text plugin(s) plus Snippet embeds where the scrape had dynamic embeds.
 
-    ``renderCatalog`` options: {readme}
+    XRAS ``renderCatalog`` options: {readme}
     """.format(readme=RESOURCE_CATALOG_README_URL)
     catalog_snippet = resource_catalog_snippet_for_page(page_slug)
-    for segment in split_html_at_resource_catalog(html):
+    additional_resources_snippet = additional_resources_snippet_for_page(page_slug)
+    for segment in split_html_at_article_embeds(html):
         if segment is RESOURCE_CATALOG_SEGMENT:
             if catalog_snippet:
                 slug, name, body = catalog_snippet
+                builder.add_snippet_html(parent, slug=slug, name=name, html=body)
+            continue
+        if segment is ADDITIONAL_RESOURCES_SEGMENT:
+            if additional_resources_snippet:
+                slug, name, body = additional_resources_snippet
                 builder.add_snippet_html(parent, slug=slug, name=name, html=body)
             continue
         prepared = _prepare_html(segment)
@@ -242,7 +252,7 @@ def _add_article_text_plugins_from_html(
             tag_type='section',
             label=nairr_section_label_from_chunk(pending_h1),
         )
-        _add_html_with_resource_catalog(
+        _add_html_with_article_embeds(
             builder, section, pending_h1, page_slug=page_slug
         )
         _note_section(section)
@@ -275,19 +285,32 @@ def _add_article_text_plugins_from_html(
                 body_parts.append(pending_h1)
                 pending_h1 = None
             body_parts.append(chunk)
-            _add_html_with_resource_catalog(
+            _add_html_with_article_embeds(
                 builder, section, ''.join(body_parts), page_slug=page_slug
             )
             _note_section(section)
         else:
-            _flush_pending_h1_section()
-            section = builder.add_section(
-                parent,
-                MUTED_SECTION,
-                tag_type='div',
-            )
-            _add_html_with_resource_catalog(
-                builder, section, chunk, page_slug=page_slug
+            body_parts = []
+            if pending_h1:
+                body_parts.append(pending_h1)
+                pending_h1 = None
+            body_parts.append(chunk)
+            combined = ''.join(body_parts)
+            if body_parts and _chunk_leading_tag(body_parts[0]) == 'h1':
+                section = builder.add_section(
+                    parent,
+                    GRID_CONTAINER_TYPE_SECTION,
+                    tag_type='section',
+                    label=nairr_section_label_from_chunk(combined),
+                )
+            else:
+                section = builder.add_section(
+                    parent,
+                    MUTED_SECTION,
+                    tag_type='div',
+                )
+            _add_html_with_article_embeds(
+                builder, section, combined, page_slug=page_slug
             )
             _note_section(section)
 

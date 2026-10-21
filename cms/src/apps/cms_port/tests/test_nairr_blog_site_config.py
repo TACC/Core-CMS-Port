@@ -16,6 +16,10 @@ class NairrBlogSiteConfigTests(SimpleTestCase):
                 12,
             )
 
+    def test_portal_blog_list_layout_matches_blog_targets(self):
+        for target in blog_import.BLOG_TARGETS.values():
+            self.assertIn(target.namespace, blog_site_config.NAIRR_PORTAL_BLOG_LIST_LAYOUT)
+
 
 class NairrBlogAppConfigApplyTests(TestCase):
     def test_apply_nairr_blog_app_config_sets_paginate_by(self):

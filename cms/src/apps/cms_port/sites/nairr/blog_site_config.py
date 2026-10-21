@@ -17,6 +17,11 @@ NAIRR_BLOG_NAMESPACE_APP_CONFIG_OVERRIDES: dict[str, dict[str, object]] = {
     'Project Highlights': {'paginate_by': NAIRR_BLOG_PAGINATE_BY},
 }
 
+NAIRR_PORTAL_BLOG_LIST_LAYOUT: dict[str, str] = {
+    'News': 'list',
+    'Project Highlights': 'grid',
+}
+
 # Core-CMS: ``has-blog-tag-no-drop-cap`` on ``.app-blog`` disables ``.s-drop-cap``.
 NAIRR_BLOG_NO_DROP_CAP_TAG = 'No Drop Cap'
 NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG = 'no-drop-cap'

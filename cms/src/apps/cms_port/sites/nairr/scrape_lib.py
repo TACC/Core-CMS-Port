@@ -34,7 +34,6 @@ def rewrite_lead_to_annotation(html: str) -> str:
     return root.decode_contents().strip()
 
 STRIP_SELECTORS = (
-    '#app',
     'style',
     'noscript',
 )
@@ -60,6 +59,21 @@ def file_path_for_scrape_path(root: Path, scrape_path: str) -> Path:
     if scrape_path in ('', 'home'):
         return root / 'home.html'
     return root / f'{scrape_path}.html'
+
+
+def _additional_resources_json_path() -> Path:
+    return Path(__file__).resolve().parent / 'static/nairr/data/additional-resources.json'
+
+
+def sync_additional_resources_json(base: str, session: requests.Session) -> Path:
+    """Refresh vendored ``additional-resources.json`` from nairrpilot.org."""
+    url = urljoin(base + '/', 'pilotresources/resources.json')
+    response = session.get(url, timeout=60)
+    response.raise_for_status()
+    path = _additional_resources_json_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(response.content)
+    return path
 
 
 def fetch_html(scrape_path: str, *, base: str, session: requests.Session) -> str:
@@ -201,6 +215,8 @@ def scrape_one(
         }
     )
     html = fetch_html(scrape_path, base=base, session=session)
+    if scrape_path == 'pilotresources':
+        sync_additional_resources_json(base, session)
     if scrape_path in ('', 'home'):
         extracted = extract_home_html(html)
         write_path = write_scrape_file(root, 'home', extracted)

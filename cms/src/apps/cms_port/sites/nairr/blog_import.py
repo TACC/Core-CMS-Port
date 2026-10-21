@@ -21,6 +21,7 @@ from djangocms_blog.models import BlogConfig, Post
 
 from apps.cms_port.common.blog_app_config import (
     PortBlogThumbnailOptions,
+    apply_import_post_author,
     apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
@@ -28,8 +29,8 @@ from apps.cms_port.common.blog_body import populate_blog_post_body_from_html
 from apps.cms_port.common.filer_assets import import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
-    adopt_registry_reverse_id,
-    find_page_for_registry_slug,
+    blog_root_stub_reverse_id,
+    is_under_generated,
 )
 from apps.cms_port.sites.nairr import blog_scrape
 from apps.cms_port.sites.nairr.blog_site_config import (
@@ -183,29 +184,53 @@ def _retire_stray_root_news_blog(canonical_page: Page, target: BlogTarget, langu
         draft.delete()
 
 
+def _delete_drafts_under_generated(reverse_id: str, registry) -> None:
+    while True:
+        draft = Page.objects.drafts().filter(reverse_id=reverse_id).first()
+        if not draft or not is_under_generated(draft, registry):
+            break
+        draft.delete()
+
+
 def _ensure_registry_page(
     slug: str,
     language: str,
     publisher,
     no_publish: bool,
 ) -> Page:
-    """Ensure a registry page exists under the real tree (top-level pages, not under Generated)."""
+    """Ensure a registry page exists on the site-root tree (not under Generated).
+
+    Blog pages (``pattern == 'blog'``) use their registry ``reverse_id`` directly, so re-running
+    this finds the same page. Ancestor pages (e.g. the ``News/Events`` section) get a distinct
+    ``blog_root_stub_reverse_id`` instead of the registry's own id, so this root-tree stub never
+    collides with — or gets deleted/recreated alongside — the same slug's page under Generated
+    while that page is still pending editor review.
+    """
     spec = spec_by_slug(slug)
     if not spec:
         raise ValueError(f'Unknown page slug {slug!r}')
-    page = find_page_for_registry_slug(spec.slug, language, page_registry)
-    if page:
-        return adopt_registry_reverse_id(page, spec.slug, page_registry, publisher)
+
+    if spec.pattern == 'blog':
+        reverse_id = page_registry.reverse_id_for_slug(spec.slug)
+        _delete_drafts_under_generated(reverse_id, page_registry)
+    else:
+        reverse_id = blog_root_stub_reverse_id(spec.slug, page_registry)
+
+    existing = Page.objects.drafts().filter(reverse_id=reverse_id).first()
+    if existing:
+        return existing.get_draft_object() if hasattr(existing, 'get_draft_object') else existing
+
     parent = None
     if spec.parent_slug:
         parent = _ensure_registry_page(spec.parent_slug, language, publisher, no_publish)
+
     page = create_page(
         title=spec.title,
         template=spec.template,
         language=language,
         slug=spec.slug.split('/')[-1] or 'home',
         parent=parent,
-        reverse_id=page_registry.reverse_id_for_slug(spec.slug),
+        reverse_id=reverse_id,
         created_by=publisher,
         in_navigation=spec.in_navigation,
         published=False,
@@ -272,7 +297,8 @@ def _upsert_post(
         .first()
     )
     if not post:
-        post = Post(app_config=config, author=publisher)
+        post = Post(app_config=config)
+    apply_import_post_author(post, publisher)
     post.set_current_language(language)
     post.title = title or row.get('title') or slug
     post.slug = slug
@@ -314,7 +340,8 @@ def import_news_row(
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     kind = row.get('kind', 'external')
-    description = row.get('abstract_html', '')
+    description = blog_scrape.prepare_news_abstract_html(row.get('abstract_html', ''))
+    title = blog_scrape.plain_news_title(row.get('title') or '')
     site_host = urlparse(site_base).netloc
 
     if kind == 'external_hidden':
@@ -338,6 +365,7 @@ def import_news_row(
         abstract_html=abstract,
         post_text='',
         external_tag=True,
+        title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
     )
