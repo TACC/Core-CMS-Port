@@ -176,6 +176,11 @@ class Command(BaseCommand):
 
             page_by_slug[spec.slug] = page
 
+            if spec.pattern == 'home' and not page.is_home:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', UserWarning)
+                    page.set_as_homepage(publisher)
+
             if spec.pattern not in ('top_level_page', 'empty'):
                 placeholder = page.placeholders.get(slot='content')
                 import_pages.populate_page_content(spec, placeholder, language, scrape_root)
@@ -422,6 +427,8 @@ class Command(BaseCommand):
         return draft
 
     def _resolve_parent(self, spec, page_by_slug, page_registry, generated_container=None):
+        if spec.pattern == 'home':
+            return None
         if spec.parent_slug:
             if spec.parent_slug in page_by_slug:
                 return page_by_slug[spec.parent_slug]
