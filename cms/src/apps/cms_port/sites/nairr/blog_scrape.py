@@ -223,9 +223,16 @@ def _assign_same_day_order(rows: list[dict]) -> None:
 
 
 def build_projects_manifest_rows(items: list, base: str) -> list[dict]:
+    """Build manifest in JSON feed order (newest first); ``feed_rank`` drives ``date_published``."""
+    slugs = []
+    for item in items:
+        slug = _slug_from_highlight_url(item.get('url') or '')
+        if slug:
+            slugs.append(slug)
+    feed_total = len(slugs)
     rows = []
-    # Feed is newest-first; oldest-first manifest matches blog list order after import.
-    for item in reversed(items):
+    feed_rank = 0
+    for item in items:
         url = item.get('url') or ''
         slug = _slug_from_highlight_url(url)
         if not slug:
@@ -237,8 +244,11 @@ def build_projects_manifest_rows(items: list, base: str) -> list[dict]:
                 'image_url': item.get('imageUrl', ''),
                 'source_url': urljoin(base, url) if url.startswith('/') else url,
                 'kind': 'full',
+                'feed_rank': feed_rank,
+                'feed_total': feed_total,
             }
         )
+        feed_rank += 1
     return rows
 
 
