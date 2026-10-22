@@ -52,6 +52,8 @@ Scrape third-party pages, then import into django CMS.
 
 Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker).
 
+Bind-mount `cms/src/taccsite_cms/settings/settings_custom.py` and `settings_local.py` onto the same paths under `/code/taccsite_cms/settings/` in `docker-compose.agent-<port>.yml`. **`settings_custom` canon** is the deploy repo (e.g. NAIRR: [Core-Portal-Deployments `nairr-oc/camino/cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py)). **`settings_local`** is per-worktree dev only—bootstrap from [Core-CMS `settings_local.example.py`](https://github.com/TACC/Core-CMS/blob/main/taccsite_cms/settings/settings_local.example.py) (e.g. distinct `SESSION_COOKIE_NAME` per port). Do not treat the `core_cms_*_settings_data` volume as the place to edit either file.
+
 #### Section Labels
 
 When setting **TACC Site Section** plugin **Label** values on import (`ContentBuilder.add_section(..., label=...)`):
