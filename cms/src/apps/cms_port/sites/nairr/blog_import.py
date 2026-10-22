@@ -86,7 +86,8 @@ def _parse_date(value: str):
     return timezone.now()
 
 
-# Spacing between synthetic publish times (see News ``same_day_order`` on main).
+# Spacing between same-day posts' synthetic publish times: 8 slots/day (0am, 3am, ...,
+# 9pm), comfortably more than the News feed ever has sharing one display date.
 SAME_DAY_ORDER_HOURS = 3
 PROJECTS_FEED_PUBLISH_BASE = datetime(2024, 6, 1, 12, 0, 0)
 
@@ -132,12 +133,12 @@ def _rewrite_internal_hrefs(html: str, language: str, site_base: str) -> str:
         if href.startswith('http'):
             if urlparse(href).netloc == site_host:
                 path = urlparse(href).path or '/'
-                page = internal_page_for_url(path, language, create=False)
+                page = internal_page_for_url(path, language, create=True)
                 if page:
                     anchor['href'] = page.get_absolute_url(language)
             continue
         if href.startswith('/') and not href.startswith('//'):
-            page = internal_page_for_url(href, language, create=False)
+            page = internal_page_for_url(href, language, create=True)
             if page:
                 anchor['href'] = page.get_absolute_url(language)
             else:
@@ -326,17 +327,21 @@ def _upsert_post(
     root: Path | None = None,
     thumbnail_options: PortBlogThumbnailOptions | None = None,
 ) -> Post:
-    slug = row['slug']
+    resolved_title = title or row.get('title') or row['slug']
     post = (
-        Post.objects.filter(app_config=config, translations__slug=slug, translations__language_code=language)
+        Post.objects.filter(
+            app_config=config, translations__title=resolved_title, translations__language_code=language
+        )
         .first()
     )
     if not post:
         post = Post(app_config=config)
     apply_import_post_author(post, publisher)
     post.set_current_language(language)
-    post.title = title or row.get('title') or slug
-    post.slug = slug
+    post.title = resolved_title
+    # Leave slug blank: Post.save_translation() auto-derives it from the title
+    # (djangocms_blog.models.Post), matching how an editor creates a post by hand.
+    post.slug = ''
     post.abstract = abstract_html
     post.post_text = post_text
     post.publish = not no_publish
