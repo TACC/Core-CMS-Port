@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import warnings
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -84,6 +84,41 @@ def _parse_date(value: str):
         except ValueError:
             continue
     return timezone.now()
+
+
+# Spacing between synthetic publish times (see News ``same_day_order`` on main).
+SAME_DAY_ORDER_HOURS = 3
+PROJECTS_FEED_PUBLISH_BASE = datetime(2024, 6, 1, 12, 0, 0)
+
+
+def _resolve_post_datetime(row: dict):
+    """``date_published`` from display ``date`` (News) or highlights ``feed_rank`` (Projects)."""
+    date_value = str(row.get('date', '')).strip()
+    if date_value:
+        base = _parse_date(date_value)
+        same_day_order = row.get('same_day_order')
+        if same_day_order is not None:
+            return base + timedelta(hours=int(same_day_order) * SAME_DAY_ORDER_HOURS)
+        return base
+    feed_rank = row.get('feed_rank')
+    if feed_rank is not None:
+        total = int(row.get('feed_total', 1))
+        base = timezone.make_aware(PROJECTS_FEED_PUBLISH_BASE)
+        offset = (total - 1 - int(feed_rank)) * SAME_DAY_ORDER_HOURS
+        return base + timedelta(hours=offset)
+    return timezone.now()
+
+
+def _with_projects_feed_ranks(rows: list[dict]) -> list[dict]:
+    """Backfill ``feed_rank`` for manifests scraped before rank metadata existed."""
+    total = len(rows)
+    out: list[dict] = []
+    for index, row in enumerate(rows):
+        updated = dict(row)
+        updated.setdefault('feed_rank', index)
+        updated.setdefault('feed_total', total)
+        out.append(updated)
+    return out
 
 
 def _rewrite_internal_hrefs(html: str, language: str, site_base: str) -> str:
@@ -305,7 +340,7 @@ def _upsert_post(
     post.abstract = abstract_html
     post.post_text = post_text
     post.publish = not no_publish
-    post.date_published = _parse_date(str(row.get('date', '')))
+    post.date_published = _resolve_post_datetime(row)
     if root is not None and thumbnail_options is not None:
         _attach_main_image(
             post,
@@ -441,7 +476,7 @@ def import_blog(
             thumbnail_options=thumbnail_options,
         )
     else:
-        rows = load_manifest(blog_scrape.projects_manifest_path(root))
+        rows = _with_projects_feed_ranks(load_manifest(blog_scrape.projects_manifest_path(root)))
         importer = lambda row: import_projects_row(
             config,
             row,

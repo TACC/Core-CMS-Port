@@ -68,6 +68,17 @@ class BlogScrapeKindTests(SimpleTestCase):
         self.assertIn('<li><a href="https://zenodo.org/records/2"', out)
         self.assertNotIn('<br', out.lower())
 
+    def test_build_projects_manifest_preserves_json_feed_order_and_rank(self):
+        items = [
+            {'url': '/projects/highlights/newest', 'label': 'Newest', 'imageUrl': ''},
+            {'url': '/projects/highlights/older', 'label': 'Older', 'imageUrl': ''},
+        ]
+        rows = blog_scrape.build_projects_manifest_rows(items, 'https://nairrpilot.org')
+        self.assertEqual([row['slug'] for row in rows], ['newest', 'older'])
+        self.assertEqual(rows[0]['feed_rank'], 0)
+        self.assertEqual(rows[1]['feed_rank'], 1)
+        self.assertEqual(rows[0]['feed_total'], 2)
+
     def test_prepare_news_abstract_keeps_inline_links_in_prose(self):
         html = (
             '<p>The NAIRR Pilot has launched its '

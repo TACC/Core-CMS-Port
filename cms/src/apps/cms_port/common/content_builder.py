@@ -511,6 +511,7 @@ class ContentBuilder:
         caption: str = '',
         link_url: str = '',
         link_target: str = '',
+        alignment: str = 'center',
     ):
         """Picture / Image (Responsive) plugin — ``Bootstrap4PicturePlugin``, not generic ``Image``."""
         if not filer_image and not external_url:
@@ -523,6 +524,7 @@ class ContentBuilder:
             'caption_text': caption or '',
             'link_url': link_url or '',
             'link_target': link_target or '',
+            'alignment': alignment or '',
         }
         if filer_image:
             kwargs['picture'] = filer_image
