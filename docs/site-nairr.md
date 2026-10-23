@@ -55,13 +55,7 @@ Scraped `home.html` section classes don't always match their headings:
 
 ## Static Assets
 
-Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
-
-- `css/annotation.css`
-- `css/btn.css`
-- `css/o-columns.css`
-- `css/fix-blog-grid.css` (temporary; belongs in Core-CMS blog grid styles)
-- `js/faq-accordion.js`
+See [`cms/src/apps/cms_port/sites/nairr/static/nairr/`](../cms/src/apps/cms_port/sites/nairr/static/nairr).
 
 ## Links
 
