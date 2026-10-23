@@ -36,7 +36,7 @@ class BlogImportAuthorTests(TestCase):
             no_publish=True,
             abstract_html='',
             post_text='body',
-            external_tag=False,
+            redirect_tag=False,
         )
 
     def test_nairr_config_leaves_author_empty_on_create(self):

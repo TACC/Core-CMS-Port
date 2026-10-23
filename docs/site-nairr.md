@@ -63,6 +63,10 @@ Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
 - `css/fix-blog-grid.css` (temporary; belongs in Core-CMS blog grid styles)
 - `js/faq-accordion.js`
 
+## Blog / News
+
+News manifest rows use `kind` from `classify_news_item` (see [AGENTS.md](../AGENTS.md#nairr)): redirect-tagged posts are only `external_with_redirect` and `internal_with_redirect`. Action links (Zoom, registration, PDFs) import as `external_sans_redirect` with an on-site article page and a body CTA—not auto-redirect to the external URL.
+
 ## Links
 
 In Link/Button plugins:

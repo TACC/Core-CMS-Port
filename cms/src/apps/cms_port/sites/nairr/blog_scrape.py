@@ -26,6 +26,84 @@ HIDDEN_CTA_MARKERS = (
 
 EXTERNAL_TAG_NAME = 'external'
 
+REDIRECT_KINDS = frozenset({'external_with_redirect', 'internal_with_redirect'})
+
+LEGACY_NEWS_KINDS = {
+    'external': 'external_sans_redirect',
+    'external_hidden': 'external_with_redirect',
+}
+
+
+def normalize_news_kind(kind: str) -> str:
+    return LEGACY_NEWS_KINDS.get(kind, kind)
+
+
+def _normalize_host(netloc: str) -> str:
+    host = (netloc or '').lower()
+    if host.startswith('www.'):
+        host = host[4:]
+    return host
+
+
+def abstract_hrefs(html: str) -> list[str]:
+    return re.findall(r'href=["\']([^"\']+)["\']', html or '', flags=re.I)
+
+
+def is_skippable_href(href: str) -> bool:
+    return href.startswith(('mailto:', 'tel:', 'javascript:'))
+
+
+def is_internal_href(href: str, site_host: str) -> bool:
+    if is_skippable_href(href):
+        return False
+    if href.startswith('/') and not href.startswith('//'):
+        return True
+    base = f'https://{_normalize_host(site_host)}'
+    resolved = urljoin(base, href)
+    parsed = urlparse(resolved)
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    if not parsed.netloc:
+        return True
+    return _normalize_host(parsed.netloc) == _normalize_host(site_host)
+
+
+def is_offsite_http_href(href: str, site_host: str) -> bool:
+    if is_skippable_href(href):
+        return False
+    if href.startswith('/') and not href.startswith('//'):
+        return False
+    base = f'https://{_normalize_host(site_host)}'
+    resolved = urljoin(base, href)
+    parsed = urlparse(resolved)
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    if not parsed.netloc:
+        return False
+    return _normalize_host(parsed.netloc) != _normalize_host(site_host)
+
+
+def classify_news_item(item: dict, *, site_host: str) -> str:
+    raw = item.get('nDescription') or ''
+    html = prepare_news_abstract_html(raw)
+    hrefs = [href for href in abstract_hrefs(html) if not is_skippable_href(href)]
+
+    if len(hrefs) > 1:
+        if any(is_offsite_http_href(href, site_host) for href in hrefs):
+            return 'external_sans_redirect'
+        return 'internal_sans_redirect'
+
+    if len(hrefs) == 0:
+        return 'internal_sans_redirect'
+
+    href = hrefs[0]
+    if is_internal_href(href, site_host):
+        return 'internal_with_redirect'
+
+    if any(marker in raw for marker in HIDDEN_CTA_MARKERS):
+        return 'external_with_redirect'
+    return 'external_sans_redirect'
+
 
 @dataclass(frozen=True)
 class BlogScrapeTargets:
@@ -138,13 +216,6 @@ def prepare_news_abstract_html(html: str) -> str:
     return root.decode_contents().strip()
 
 
-def news_kind(item: dict) -> str:
-    description = item.get('nDescription') or ''
-    if any(marker in description for marker in HIDDEN_CTA_MARKERS):
-        return 'external_hidden'
-    return 'external'
-
-
 def _slug_from_highlight_url(url: str) -> str:
     path = urlparse(url).path.strip('/')
     return path.rsplit('/', 1)[-1] if path else ''
@@ -179,7 +250,7 @@ def _with_abstract_lead_in(post_id: int, abstract_html: str) -> str:
     return f'<p><strong>{lead_in}</strong></p>{abstract_html}'
 
 
-def build_news_manifest_rows(items: list) -> list[dict]:
+def build_news_manifest_rows(items: list, *, site_host: str) -> list[dict]:
     rows = []
     for item in items:
         post_id = item['id']
@@ -195,7 +266,7 @@ def build_news_manifest_rows(items: list) -> list[dict]:
                 'abstract_html': _with_abstract_lead_in(
                     post_id, prepare_news_abstract_html(item.get('nDescription', ''))
                 ),
-                'kind': news_kind(item),
+                'kind': classify_news_item(item, site_host=site_host),
             }
         )
     _assign_same_day_order(rows)
@@ -260,7 +331,7 @@ def scrape_news(
     items = _fetch_json(session, targets.news_json_url)
     if not isinstance(items, list):
         raise ValueError(f'Unexpected news JSON shape from {targets.news_json_url}')
-    rows = build_news_manifest_rows(items)
+    rows = build_news_manifest_rows(items, site_host=urlparse(base).netloc)
     if slug_filter is not None:
         rows = [row for row in rows if row['slug'] == slug_filter]
     write_manifest(news_manifest_path(root), rows)
@@ -314,12 +385,49 @@ def scrape_projects(
 
 
 def first_offsite_href(html: str, site_host: str) -> str | None:
-    for href in re.findall(r'href=["\']([^"\']+)["\']', html, flags=re.I):
-        if not href.startswith('http'):
-            continue
-        if urlparse(href).netloc and urlparse(href).netloc != site_host:
+    for href in abstract_hrefs(html):
+        if is_offsite_http_href(href, site_host):
+            return urljoin(f'https://{site_host}', href) if href.startswith('//') else href
+    return None
+
+
+def first_internal_href(html: str, site_host: str) -> str | None:
+    for href in abstract_hrefs(html):
+        if is_internal_href(href, site_host):
             return href
     return None
+
+
+def lone_top_level_action_link(description: str) -> tuple[str, str, str] | None:
+    """Teaser prose plus one top-level action anchor (e.g. Zoom link after ``<p>``)."""
+    soup = BeautifulSoup(f'<div data-nairr-news-body>{description}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-news-body]')
+    if not root:
+        return None
+    anchors = root.find_all('a', href=True)
+    if len(anchors) != 1:
+        return None
+    anchor = anchors[0]
+    if anchor.parent is not root:
+        return None
+    href = (anchor.get('href') or '').strip()
+    if not href or is_skippable_href(href):
+        return None
+    label = anchor.get_text(strip=True) or 'Learn more'
+    anchor.decompose()
+    teaser = root.decode_contents().strip()
+    if not teaser:
+        return None
+    return teaser, href, label
+
+
+def action_button_html(href: str, label: str) -> str:
+    return f'<p><a class="btn btn-primary" href="{href}">{label}</a></p>'
+
+
+def build_action_post_text(teaser_html: str, href: str, label: str) -> str:
+    body = prepare_news_abstract_html(teaser_html)
+    return f'{body}{action_button_html(href, label)}'
 
 
 def visible_teaser_html(description: str) -> str:
