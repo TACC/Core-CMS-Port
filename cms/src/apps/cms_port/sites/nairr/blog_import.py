@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -47,6 +48,10 @@ LEGACY_BLOG_NAMESPACES = {
     'projects': ('nairr-project-highlights', 'project-highlights'),
 }
 EXTERNAL_TAG = blog_scrape.EXTERNAL_TAG_NAME
+
+
+def redirect_blog_tag_name() -> str:
+    return getattr(settings, 'PORTAL_BLOG_TAG_FOR_EXTERNAL_ARTICLES', EXTERNAL_TAG)
 
 
 @dataclass(frozen=True)
@@ -322,7 +327,8 @@ def _upsert_post(
     no_publish: bool,
     abstract_html: str,
     post_text: str,
-    external_tag: bool,
+    redirect_tag: bool,
+    redirect_tag_name: str | None = None,
     title: str | None = None,
     root: Path | None = None,
     thumbnail_options: PortBlogThumbnailOptions | None = None,
@@ -355,9 +361,10 @@ def _upsert_post(
             thumbnail_options=thumbnail_options,
         )
     post.save()
-    ext_tag = Tag.objects.filter(name=EXTERNAL_TAG).first()
-    if external_tag:
-        tag, _ = Tag.objects.get_or_create(name=EXTERNAL_TAG)
+    tag_name = redirect_tag_name or redirect_blog_tag_name()
+    ext_tag = Tag.objects.filter(name=tag_name).first()
+    if redirect_tag:
+        tag, _ = Tag.objects.get_or_create(name=tag_name)
         post.tags.add(tag)
     elif ext_tag:
         post.tags.remove(ext_tag)
@@ -379,20 +386,43 @@ def import_news_row(
     site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
-    kind = row.get('kind', 'external')
-    description = blog_scrape.prepare_news_abstract_html(row.get('abstract_html', ''))
+    kind = blog_scrape.normalize_news_kind(row.get('kind', 'external_sans_redirect'))
+    raw_description = row.get('abstract_html', '')
+    description = blog_scrape.prepare_news_abstract_html(raw_description)
     title = blog_scrape.plain_news_title(row.get('title') or '')
     site_host = urlparse(site_base).netloc
+    redirect_tag = kind in blog_scrape.REDIRECT_KINDS
+    post_text = ''
 
-    if kind == 'external_hidden':
+    if kind == 'external_with_redirect':
         redirect = blog_scrape.first_offsite_href(description, site_host)
         if not redirect:
             redirect = blog_scrape.first_offsite_href(description, '')
         abstract = (
-            blog_scrape.build_external_hidden_abstract(description, redirect)
+            blog_scrape.build_external_hidden_abstract(raw_description, redirect)
             if redirect
-            else description
+            else _rewrite_internal_hrefs(description, language, site_base)
         )
+    elif kind == 'internal_with_redirect':
+        abstract = _rewrite_internal_hrefs(description, language, site_base)
+        if not blog_scrape.first_internal_href(abstract, site_host):
+            internal = blog_scrape.first_internal_href(description, site_host)
+            if internal:
+                abstract = _rewrite_internal_hrefs(
+                    f'<p><a href="{internal}">{title or row.get("slug", "")}</a></p>',
+                    language,
+                    site_base,
+                )
+    elif kind == 'external_sans_redirect':
+        lone_action = blog_scrape.lone_top_level_action_link(raw_description)
+        if lone_action:
+            teaser, href, label = lone_action
+            abstract = _rewrite_internal_hrefs(
+                blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+            )
+            post_text = blog_scrape.build_action_post_text(teaser, href, label)
+        else:
+            abstract = _rewrite_internal_hrefs(description, language, site_base)
     else:
         abstract = _rewrite_internal_hrefs(description, language, site_base)
 
@@ -403,8 +433,8 @@ def import_news_row(
         publisher=publisher,
         no_publish=no_publish,
         abstract_html=abstract,
-        post_text='',
-        external_tag=True,
+        post_text=post_text,
+        redirect_tag=redirect_tag,
         title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
@@ -435,7 +465,7 @@ def import_projects_row(
         no_publish=no_publish,
         abstract_html='',
         post_text='',
-        external_tag=False,
+        redirect_tag=False,
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,

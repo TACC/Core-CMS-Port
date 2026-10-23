@@ -86,6 +86,8 @@ When building **cards** from scraped Joomla HTML (`plugin_builders`):
 - Do **not** copy Joomla wrapper `<div>`s and classes (e.g. `with-controls`, `content`, `more-buttons`) into card text unless they map to styles this CMS actually loads. Unwrap or drop them when unsure.
 - If you are unsure whether a scraped class is still needed, **ask** before preserving it.
 
+**News import kinds** (`classify_news_item` in `sites/nairr/blog_scrape.py`): `external_with_redirect`, `external_sans_redirect`, `internal_with_redirect`, `internal_sans_redirect`. Only the two `*_with_redirect` kinds get the blog tag from `PORTAL_BLOG_TAG_FOR_EXTERNAL_ARTICLES` (not every off-site teaser link). More than one teaser link → always `*_sans_redirect`. NSF-style “Learn more at …” teasers → `external_with_redirect` + hidden canonical lead link; Zoom/PDF/action links → `external_sans_redirect` with on-site detail body when needed.
+
 ### Services
 
 Follow [Core-CMS "Services"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#services).
