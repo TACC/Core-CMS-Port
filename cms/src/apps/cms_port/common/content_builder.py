@@ -28,6 +28,9 @@ SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
 })
 
 MUTED_SECTION = 'o-section o-section--style-muted'
+
+# Shown in snippet admin when body comes from the ``template`` field.
+SNIPPET_HTML_SEE_TEMPLATE = '{# SEE "Template:" #}'
 LIGHT_SECTION = 'o-section o-section--style-light'
 ACCENT_SECTION = 'o-section o-section--style-accent'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
@@ -574,6 +577,38 @@ class ContentBuilder:
             snippet.html = html
             snippet.full_clean()
             snippet.save()
+        elif created:
+            snippet.full_clean()
+        self._reject_non_section_child_of_content_root(parent)
+        return add_plugin(
+            self.placeholder,
+            SnippetPlugin,
+            self.language,
+            target=parent,
+            snippet=snippet,
+        )
+
+    def add_snippet_from_template(self, parent, *, slug: str, name: str, template: str):
+        """Render from ``template``; set ``html`` to ``SNIPPET_HTML_SEE_TEMPLATE`` on create and re-import."""
+        snippet, created = Snippet.objects.get_or_create(
+            slug=slug,
+            defaults={
+                'name': name,
+                'html': SNIPPET_HTML_SEE_TEMPLATE,
+                'template': template,
+            },
+        )
+        if not created:
+            update_fields: list[str] = []
+            if snippet.template != template:
+                snippet.template = template
+                update_fields.append('template')
+            if snippet.html != SNIPPET_HTML_SEE_TEMPLATE:
+                snippet.html = SNIPPET_HTML_SEE_TEMPLATE
+                update_fields.append('html')
+            if update_fields:
+                snippet.full_clean()
+                snippet.save(update_fields=update_fields)
         elif created:
             snippet.full_clean()
         self._reject_non_section_child_of_content_root(parent)
