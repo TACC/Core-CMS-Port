@@ -584,3 +584,35 @@ class ContentBuilder:
             target=parent,
             snippet=snippet,
         )
+
+    def add_snippet_from_template(self, parent, *, slug: str, name: str, template: str):
+        """Snippet body from a Django template path; HTML field stays empty on re-import."""
+        snippet, created = Snippet.objects.get_or_create(
+            slug=slug,
+            defaults={
+                'name': name,
+                'html': '',
+                'template': template,
+            },
+        )
+        if not created:
+            update_fields: list[str] = []
+            if snippet.template != template:
+                snippet.template = template
+                update_fields.append('template')
+            if snippet.html:
+                snippet.html = ''
+                update_fields.append('html')
+            if update_fields:
+                snippet.full_clean()
+                snippet.save(update_fields=update_fields)
+        elif created:
+            snippet.full_clean()
+        self._reject_non_section_child_of_content_root(parent)
+        return add_plugin(
+            self.placeholder,
+            SnippetPlugin,
+            self.language,
+            target=parent,
+            snippet=snippet,
+        )
