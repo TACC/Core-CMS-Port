@@ -1,0 +1,7 @@
+/* Core-CMS overrides for the additional-resources listing (not vendored from Joomla).
+   Accordion rows are native <button>; UA ButtonText can render light when django CMS sets
+   :root color-scheme and the user prefers dark. */
+
+#app .hz-accordion-style button {
+	color: var(--global-color-primary--xx-dark, #222);
+}

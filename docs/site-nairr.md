@@ -61,6 +61,7 @@ Under `cms/src/apps/cms_port/sites/nairr/static/nairr/`:
 - `css/btn.css`
 - `css/o-columns.css`
 - `css/fix-blog-grid.css` (temporary; belongs in Core-CMS blog grid styles)
+- `css/additional-resources-cms.css` (Core-CMS accordion title color; snippet on `pilotresources`, after vendored `additional-resources.css`)
 - `js/faq-accordion.js`
 
 ## Links

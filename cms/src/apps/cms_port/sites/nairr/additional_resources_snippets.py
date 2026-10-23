@@ -9,6 +9,7 @@ ADDITIONAL_RESOURCES_SNIPPET_NAME = 'NAIRR Additional Resources Listing'
 def additional_resources_snippet_html() -> str:
     return """{% load static %}
 <link rel="stylesheet" href="{% static 'nairr/css/additional-resources.css' %}">
+<link rel="stylesheet" href="{% static 'nairr/css/additional-resources-cms.css' %}">
 <div id="app"></div>
 <script>
 (function () {
