@@ -28,6 +28,9 @@ SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
 })
 
 MUTED_SECTION = 'o-section o-section--style-muted'
+
+# Shown in snippet admin when body comes from the ``template`` field.
+SNIPPET_HTML_SEE_TEMPLATE = '{# SEE "Template:" #}'
 LIGHT_SECTION = 'o-section o-section--style-light'
 ACCENT_SECTION = 'o-section o-section--style-accent'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
@@ -586,12 +589,12 @@ class ContentBuilder:
         )
 
     def add_snippet_from_template(self, parent, *, slug: str, name: str, template: str):
-        """Snippet body from a Django template path; HTML field stays empty on re-import."""
+        """Render from ``template``; set ``html`` to ``SNIPPET_HTML_SEE_TEMPLATE`` on create and re-import."""
         snippet, created = Snippet.objects.get_or_create(
             slug=slug,
             defaults={
                 'name': name,
-                'html': '',
+                'html': SNIPPET_HTML_SEE_TEMPLATE,
                 'template': template,
             },
         )
@@ -600,8 +603,8 @@ class ContentBuilder:
             if snippet.template != template:
                 snippet.template = template
                 update_fields.append('template')
-            if snippet.html:
-                snippet.html = ''
+            if snippet.html != SNIPPET_HTML_SEE_TEMPLATE:
+                snippet.html = SNIPPET_HTML_SEE_TEMPLATE
                 update_fields.append('html')
             if update_fields:
                 snippet.full_clean()
