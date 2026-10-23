@@ -26,6 +26,7 @@ from apps.cms_port.common.blog_app_config import (
     apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
+from apps.cms_port.common.blog_body import populate_blog_post_body_from_html
 from apps.cms_port.common.filer_assets import import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
@@ -33,7 +34,10 @@ from apps.cms_port.common.registry_pages import (
     is_under_generated,
 )
 from apps.cms_port.sites.nairr import blog_scrape
-from apps.cms_port.sites.nairr.blog_site_config import apply_nairr_blog_app_config
+from apps.cms_port.sites.nairr.blog_site_config import (
+    apply_nairr_blog_app_config,
+    ensure_nairr_no_drop_cap_tag,
+)
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
 from apps.cms_port.sites.nairr.page_registry import spec_by_slug
@@ -90,17 +94,37 @@ def _parse_date(value: str):
 # Spacing between same-day posts' synthetic publish times: 8 slots/day (0am, 3am, ...,
 # 9pm), comfortably more than the News feed ever has sharing one display date.
 SAME_DAY_ORDER_HOURS = 3
+PROJECTS_FEED_PUBLISH_BASE = datetime(2024, 6, 1, 12, 0, 0)
 
 
 def _resolve_post_datetime(row: dict):
-    """``date_published`` using the display date (``row['date']``) for the calendar day,
-    nudged by ``row['same_day_order']`` so same-day posts keep their original feed order.
-    """
-    base = _parse_date(str(row.get('date', '')))
-    same_day_order = row.get('same_day_order')
-    if not same_day_order:
+    """``date_published`` from display ``date`` (News) or highlights ``feed_rank`` (Projects)."""
+    date_value = str(row.get('date', '')).strip()
+    if date_value:
+        base = _parse_date(date_value)
+        same_day_order = row.get('same_day_order')
+        if same_day_order is not None:
+            return base + timedelta(hours=int(same_day_order) * SAME_DAY_ORDER_HOURS)
         return base
-    return base + timedelta(hours=same_day_order * SAME_DAY_ORDER_HOURS)
+    feed_rank = row.get('feed_rank')
+    if feed_rank is not None:
+        total = int(row.get('feed_total', 1))
+        base = timezone.make_aware(PROJECTS_FEED_PUBLISH_BASE)
+        offset = (total - 1 - int(feed_rank)) * SAME_DAY_ORDER_HOURS
+        return base + timedelta(hours=offset)
+    return timezone.now()
+
+
+def _with_projects_feed_ranks(rows: list[dict]) -> list[dict]:
+    """Backfill ``feed_rank`` for manifests scraped before rank metadata existed."""
+    total = len(rows)
+    out: list[dict] = []
+    for index, row in enumerate(rows):
+        updated = dict(row)
+        updated.setdefault('feed_rank', index)
+        updated.setdefault('feed_total', total)
+        out.append(updated)
+    return out
 
 
 def _rewrite_internal_hrefs(html: str, language: str, site_base: str) -> str:
@@ -344,6 +368,7 @@ def _upsert_post(
         post.tags.add(tag)
     elif ext_tag:
         post.tags.remove(ext_tag)
+    post.tags.add(ensure_nairr_no_drop_cap_tag())
     if not no_publish:
         post.publish = True
         post.save()
@@ -424,24 +449,39 @@ def import_projects_row(
     language: str,
     publisher,
     no_publish: bool,
+    site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     html_path = blog_scrape.project_html_path(root, row['slug'])
     html = html_path.read_text(encoding='utf-8') if html_path.is_file() else ''
     title, body = _split_title_body(html) if html else ('', '')
-    return _upsert_post(
+    if body:
+        body = _rewrite_internal_hrefs(body, language, site_base)
+    post = _upsert_post(
         config,
         row,
         language=language,
         publisher=publisher,
         no_publish=no_publish,
         abstract_html='',
-        post_text=body,
+        post_text='',
         redirect_tag=False,
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
     )
+    populate_blog_post_body_from_html(
+        post,
+        body,
+        language,
+        publisher,
+        internal_page_for_url=lambda path, create=False: internal_page_for_url(
+            path, language, create=create
+        ),
+        rewrite_url=rewrite_support_url,
+        site_base=site_base,
+    )
+    return post
 
 
 def import_blog(
@@ -471,7 +511,7 @@ def import_blog(
             thumbnail_options=thumbnail_options,
         )
     else:
-        rows = load_manifest(blog_scrape.projects_manifest_path(root))
+        rows = _with_projects_feed_ranks(load_manifest(blog_scrape.projects_manifest_path(root)))
         importer = lambda row: import_projects_row(
             config,
             row,
@@ -479,6 +519,7 @@ def import_blog(
             language=language,
             publisher=publisher,
             no_publish=no_publish,
+            site_base=site_base,
             thumbnail_options=thumbnail_options,
         )
     if slug_filter is not None:

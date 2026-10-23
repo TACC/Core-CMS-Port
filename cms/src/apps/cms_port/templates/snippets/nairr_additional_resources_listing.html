@@ -1,0 +1,19 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'nairr/css/additional-resources.css' %}">
+<link rel="stylesheet" href="{% static 'nairr/css/additional-resources-core-cms.css' %}">
+<div id="app"></div>
+<script>
+(function () {
+	var jsonUrl = "{% static 'nairr/data/additional-resources.json' %}";
+	var orig = window.fetch;
+	window.fetch = function (input, init) {
+		var url = typeof input === "string" ? input : (input && input.url) || "";
+		if (url.indexOf("pilotresources/resources.json") !== -1) {
+			return orig.call(this, jsonUrl, init);
+		}
+		return orig.apply(this, arguments);
+	};
+})();
+</script>
+<script defer src="{% static 'nairr/js/additional-resources.js' %}"></script>
+<script defer src="{% static 'nairr/js/additional-resources-enhance.js' %}"></script>

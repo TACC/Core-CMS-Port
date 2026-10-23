@@ -28,6 +28,9 @@ SECTION_ONLY_GRID_CONTAINER_TYPES = frozenset({
 })
 
 MUTED_SECTION = 'o-section o-section--style-muted'
+
+# Shown in snippet admin when body comes from the ``template`` field.
+SNIPPET_HTML_SEE_TEMPLATE = '{# SEE "Template:" #}'
 LIGHT_SECTION = 'o-section o-section--style-light'
 ACCENT_SECTION = 'o-section o-section--style-accent'
 GRID_CONTAINER_TYPE_SECTION = 'o-section'
@@ -475,6 +478,72 @@ class ContentBuilder:
         plugin.save()
         return plugin
 
+    def add_text_link(
+        self,
+        parent,
+        *,
+        name: str,
+        url: str,
+        link_target: str = '',
+        create_missing_page: bool = False,
+    ):
+        """Bootstrap4 Link plugin (``link_type='link'``) for in-flow blog CTAs."""
+        link_target_kwargs = self._link_target_kwargs(url, create_missing_page)
+        plugin = add_plugin(
+            self.placeholder,
+            'Bootstrap4LinkPlugin',
+            self.language,
+            target=parent,
+            name=name,
+            **link_target_kwargs,
+            link_type='link',
+        )
+        if link_target:
+            plugin.target = link_target
+        plugin.full_clean()
+        plugin.save()
+        return plugin
+
+    def add_picture(
+        self,
+        parent,
+        *,
+        filer_image=None,
+        external_url: str = '',
+        alt: str = '',
+        caption: str = '',
+        link_url: str = '',
+        link_target: str = '',
+        alignment: str = 'center',
+    ):
+        """Picture / Image (Responsive) plugin — ``Bootstrap4PicturePlugin``, not generic ``Image``."""
+        if not filer_image and not external_url:
+            return None
+        attributes = {'alt': alt} if alt else {}
+        template = 'default' if link_url else 'no_link_to_ext_image'
+        kwargs = {
+            'template': template,
+            'attributes': attributes,
+            'caption_text': caption or '',
+            'link_url': link_url or '',
+            'link_target': link_target or '',
+            'alignment': alignment or '',
+        }
+        if filer_image:
+            kwargs['picture'] = filer_image
+        else:
+            kwargs['external_picture'] = external_url
+        plugin = add_plugin(
+            self.placeholder,
+            'Bootstrap4PicturePlugin',
+            self.language,
+            target=parent,
+            **kwargs,
+        )
+        plugin.full_clean()
+        plugin.save()
+        return plugin
+
     def add_snippet_script(self, parent, *, slug: str, name: str, static_path: str):
         """Add a <script src> tag via djangocms_snippet, keyed by slug so re-imports reuse it."""
         snippet, created = Snippet.objects.get_or_create(
@@ -508,6 +577,38 @@ class ContentBuilder:
             snippet.html = html
             snippet.full_clean()
             snippet.save()
+        elif created:
+            snippet.full_clean()
+        self._reject_non_section_child_of_content_root(parent)
+        return add_plugin(
+            self.placeholder,
+            SnippetPlugin,
+            self.language,
+            target=parent,
+            snippet=snippet,
+        )
+
+    def add_snippet_from_template(self, parent, *, slug: str, name: str, template: str):
+        """Render from ``template``; set ``html`` to ``SNIPPET_HTML_SEE_TEMPLATE`` on create and re-import."""
+        snippet, created = Snippet.objects.get_or_create(
+            slug=slug,
+            defaults={
+                'name': name,
+                'html': SNIPPET_HTML_SEE_TEMPLATE,
+                'template': template,
+            },
+        )
+        if not created:
+            update_fields: list[str] = []
+            if snippet.template != template:
+                snippet.template = template
+                update_fields.append('template')
+            if snippet.html != SNIPPET_HTML_SEE_TEMPLATE:
+                snippet.html = SNIPPET_HTML_SEE_TEMPLATE
+                update_fields.append('html')
+            if update_fields:
+                snippet.full_clean()
+                snippet.save(update_fields=update_fields)
         elif created:
             snippet.full_clean()
         self._reject_non_section_child_of_content_root(parent)
