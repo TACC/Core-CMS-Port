@@ -1,6 +1,6 @@
 /* Core-CMS overrides */
 
-/* To fix button color in OS dark mode */
+/* To fix white-on-white button text in OS dark mode */
 /* FAQ: Accordion rows are native `<button>`; UA ButtonText can render light because djangocms sets `:root` `color-scheme` */
 #app .hz-accordion-style button {
 	color: var(--global-color-primary--xx-dark, #222);
