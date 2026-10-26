@@ -60,6 +60,29 @@ class BlogImportNewsBodyTests(SimpleTestCase):
             body,
         )
 
+    def test_body_from_html_keeps_joomla_paths_for_plugin_import(self):
+        rewritten = (
+            '<p>The NAIRR Pilot has launched its '
+            '<a href="/generated/opportunities/startup-project/">Start-Up Project program</a>, '
+            'offering resources.</p>'
+            '<p><a href="/generated/opportunities/startup-project/">Apply now</a></p>'
+        )
+        source = (
+            '<p>The NAIRR Pilot has launched its '
+            '<a href="/opportunities/startup-project">Start-Up Project program</a>, '
+            'offering resources.</p>'
+            '<p><a href="/opportunities/startup-project">Apply now</a></p>'
+        )
+        out = blog_import._news_post_body_html(
+            '',
+            rewritten,
+            redirect_tag=False,
+            body_from_html=source,
+        )
+        self.assertIn('/opportunities/startup-project', out)
+        self.assertNotIn('/generated/', out)
+        self.assertIn('btn btn-primary', out)
+
 
 class BlogImportSplitTitleBodyTests(SimpleTestCase):
     def test_split_title_body_strips_h1_and_keeps_body(self):

@@ -408,13 +408,25 @@ def _pilot_office_hours_teaser_and_register(
     return teaser, href, label
 
 
-def _news_post_body_html(body_html: str, abstract_html: str, *, redirect_tag: bool) -> str:
-    """Detail body for non-redirect posts defaults to the list abstract."""
+def _news_post_body_html(
+    body_html: str,
+    abstract_html: str,
+    *,
+    redirect_tag: bool,
+    body_from_html: str | None = None,
+) -> str:
+    """Detail body for non-redirect posts defaults to the list abstract.
+
+    ``body_from_html`` is pre-``_rewrite_internal_hrefs`` markup so placeholder import
+    sees Joomla paths (``/opportunities/...``) rather than ``get_absolute_url()`` paths
+    (``/generated/...``).
+    """
     if redirect_tag:
         return body_html or ''
     if (body_html or '').strip():
         return body_html
-    return blog_scrape.build_news_detail_body_from_abstract(abstract_html or '')
+    source = body_from_html if body_from_html is not None else abstract_html
+    return blog_scrape.build_news_detail_body_from_abstract(source or '')
 
 
 def _apply_imported_post_body(
@@ -511,7 +523,12 @@ def import_news_row(
     else:
         abstract = _rewrite_internal_hrefs(description, language, site_base)
 
-    body_html = _news_post_body_html(body_html, abstract, redirect_tag=redirect_tag)
+    body_html = _news_post_body_html(
+        body_html,
+        abstract,
+        redirect_tag=redirect_tag,
+        body_from_html=description,
+    )
 
     post = _upsert_post(
         config,
