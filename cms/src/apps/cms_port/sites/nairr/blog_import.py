@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -42,6 +42,12 @@ from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
 from apps.cms_port.sites.nairr.page_registry import spec_by_slug
 from apps.cms_port.sites.nairr.support_links import rewrite_support_url
+
+# Joomla news id 2 — NAIRR Pilot Office Hours (SCIPE inline; Register here as body CTA).
+_PILOT_OFFICE_HOURS_NEWS_ID = 2
+_PILOT_OFFICE_HOURS_REGISTER_HREF = (
+    'https://access-ci.atlassian.net/servicedesk/customer/portal/5/group/7/create/44'
+)
 
 LEGACY_BLOG_NAMESPACES = {
     'news': ('nairr-news', 'news'),
@@ -375,6 +381,33 @@ def _upsert_post(
     return post
 
 
+def _pilot_office_hours_teaser_and_register(
+    raw_description: str,
+) -> tuple[str, str, str] | None:
+    soup = BeautifulSoup(f'<div>{raw_description}</div>', 'lxml')
+    root = soup.select_one('div')
+    if not root:
+        return None
+    register = root.find('a', href=_PILOT_OFFICE_HOURS_REGISTER_HREF)
+    if not register:
+        return None
+    href = (register.get('href') or '').strip()
+    label = register.get_text(strip=True) or 'Register here'
+    parent = register.parent
+    register.decompose()
+    if parent and parent.name == 'p':
+        for node in reversed(list(parent.children)):
+            if isinstance(node, NavigableString) and node.strip() == '.':
+                node.extract()
+                break
+            if isinstance(node, NavigableString) and node.strip():
+                break
+    teaser = root.decode_contents().strip()
+    if not teaser or not href:
+        return None
+    return teaser, href, label
+
+
 def _news_post_body_html(body_html: str, abstract_html: str, *, redirect_tag: bool) -> str:
     """Detail body for non-redirect posts defaults to the list abstract."""
     if redirect_tag:
@@ -457,8 +490,17 @@ def import_news_row(
                     site_base,
                 )
     elif kind == 'external_sans_redirect':
-        lone_action = blog_scrape.lone_top_level_action_link(raw_description)
-        if lone_action:
+        if row.get('id') == _PILOT_OFFICE_HOURS_NEWS_ID:
+            office_hours = _pilot_office_hours_teaser_and_register(raw_description)
+            if office_hours:
+                teaser, href, label = office_hours
+                abstract = _rewrite_internal_hrefs(
+                    blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+                )
+                body_html = blog_scrape.build_action_post_text(teaser, href, label)
+            else:
+                abstract = _rewrite_internal_hrefs(description, language, site_base)
+        elif lone_action := blog_scrape.lone_top_level_action_link(raw_description):
             teaser, href, label = lone_action
             abstract = _rewrite_internal_hrefs(
                 blog_scrape.prepare_news_abstract_html(teaser), language, site_base

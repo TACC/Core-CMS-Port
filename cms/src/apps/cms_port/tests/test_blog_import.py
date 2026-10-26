@@ -2,7 +2,7 @@ from pathlib import Path
 
 from django.test import SimpleTestCase
 
-from apps.cms_port.sites.nairr import blog_import
+from apps.cms_port.sites.nairr import blog_import, blog_scrape
 
 
 class BlogImportNewsBodyTests(SimpleTestCase):
@@ -30,6 +30,27 @@ class BlogImportNewsBodyTests(SimpleTestCase):
             blog_import._news_post_body_html('', '<p>teaser</p>', redirect_tag=True),
             '',
         )
+
+    def test_pilot_office_hours_joomla_id_2_register_button_body(self):
+        raw = (
+            '<p><strong>2nd Tuesday of every month</strong></p>'
+            '<p>Hosted by <a href="https://www.nsf.gov/funding/opportunities/strengthening-cyberinfrastructure-professionals-ecosystem">SCIPE</a> '
+            f'CIPs. <a href="{blog_import._PILOT_OFFICE_HOURS_REGISTER_HREF}">Register here</a>.</p>'
+        )
+        split = blog_import._pilot_office_hours_teaser_and_register(raw)
+        self.assertIsNotNone(split)
+        teaser, href, label = split
+        self.assertEqual(label, 'Register here')
+        self.assertNotIn('Register here', teaser)
+        self.assertIn('SCIPE', teaser)
+        body = blog_import._news_post_body_html(
+            blog_scrape.build_action_post_text(teaser, href, label),
+            teaser,
+            redirect_tag=False,
+        )
+        self.assertIn('btn btn-primary', body)
+        self.assertIn('target="_blank"', body)
+        self.assertNotIn('<a href="' + blog_import._PILOT_OFFICE_HOURS_REGISTER_HREF, teaser)
 
     def test_action_body_not_replaced_by_abstract(self):
         body = '<p>teaser</p><p><a class="btn btn-primary" href="https://z">Zoom</a></p>'
