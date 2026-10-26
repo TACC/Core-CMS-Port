@@ -431,8 +431,97 @@ def lone_top_level_action_link(description: str) -> tuple[str, str, str] | None:
     return teaser, href, label
 
 
+def _offsite_http_href(href: str) -> bool:
+    href = (href or '').strip()
+    return href.startswith(('http://', 'https://', '//'))
+
+
+def button_anchor_html(href: str, label: str) -> str:
+    target = ' target="_blank"' if _offsite_http_href(href) else ''
+    return f'<a class="btn btn-primary" href="{href}"{target}>{label}</a>'
+
+
 def action_button_html(href: str, label: str) -> str:
-    return f'<p><a class="btn btn-primary" href="{href}">{label}</a></p>'
+    return f'<p>{button_anchor_html(href, label)}</p>'
+
+
+def _paragraph_is_single_link_only(paragraph: Tag) -> bool:
+    anchors = paragraph.find_all('a', href=True)
+    if len(anchors) != 1:
+        return False
+    for child in paragraph.children:
+        if isinstance(child, NavigableString):
+            if str(child).strip():
+                return False
+        elif child.name == 'a':
+            continue
+        else:
+            return False
+    return True
+
+
+def _list_is_link_items_only(list_tag: Tag) -> bool:
+    items = list_tag.find_all('li', recursive=False)
+    if not items:
+        return False
+    for item in items:
+        anchors = item.find_all('a', href=True)
+        if len(anchors) != 1:
+            return False
+        anchor = anchors[0]
+        if collapse_whitespace(item.get_text()) != collapse_whitespace(anchor.get_text()):
+            return False
+    return True
+
+
+def _anchor_href_label(anchor: Tag) -> tuple[str, str]:
+    href = (anchor.get('href') or '').strip()
+    label = anchor.get_text(strip=True) or 'Learn more'
+    return href, label
+
+
+def build_news_detail_body_from_abstract(html: str) -> str:
+    """Detail body from list abstract: prose unchanged, isolated links become one button row."""
+    html = (html or '').strip()
+    if not html:
+        return html
+    soup = BeautifulSoup(f'<div data-nairr-news-body>{html}</div>', 'lxml')
+    root = soup.select_one('div[data-nairr-news-body]')
+    if not root:
+        return html
+    isolated_buttons: list[tuple[str, str]] = []
+    for node in list(root.children):
+        if not isinstance(node, Tag):
+            continue
+        if node.name == 'p' and _paragraph_is_single_link_only(node):
+            isolated_buttons.append(_anchor_href_label(node.find('a', href=True)))
+            node.decompose()
+        elif node.name == 'ul' and _list_is_link_items_only(node):
+            for item in node.find_all('li', recursive=False):
+                isolated_buttons.append(_anchor_href_label(item.find('a', href=True)))
+            node.decompose()
+    if not isolated_buttons:
+        return html
+    prose = root.decode_contents().strip()
+    button_paragraph = _button_row_paragraph_html(isolated_buttons)
+    return f'{prose}{button_paragraph}' if prose else button_paragraph
+
+
+def _button_row_paragraph_html(buttons: list[tuple[str, str]]) -> str:
+    if not buttons:
+        return ''
+    soup = BeautifulSoup('<p></p>', 'lxml')
+    paragraph = soup.p
+    for index, (href, label) in enumerate(buttons):
+        if index:
+            paragraph.append('\xa0')
+        anchor = soup.new_tag('a', href=href)
+        anchor['class'] = 'btn btn-primary'
+        if _offsite_http_href(href):
+            anchor['target'] = '_blank'
+        anchor.string = label
+        paragraph.append(anchor)
+    return str(paragraph)
 
 
 def build_action_post_text(teaser_html: str, href: str, label: str) -> str:

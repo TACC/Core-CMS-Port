@@ -39,6 +39,36 @@ class BlogImportAuthorTests(TestCase):
             redirect_tag=False,
         )
 
+    def test_apply_imported_post_body_uses_placeholder_when_enabled(self):
+        config = self._blog_config('NewsBodyPlaceholder')
+        post = self._upsert(config, 'placeholder-body')
+        blog_import._apply_imported_post_body(
+            post,
+            '<p>Detail <strong>body</strong>.</p>',
+            language=self.language,
+            publisher=self.publisher,
+            site_base='https://nairrpilot.org',
+        )
+        post.set_current_language(self.language)
+        self.assertEqual(post.post_text, '')
+        self.assertGreater(post.content.get_plugins(self.language).count(), 0)
+
+    def test_apply_imported_post_body_uses_post_text_when_placeholder_disabled(self):
+        config = self._blog_config('NewsBodyPostText')
+        config.app_data.config.use_placeholder = False
+        config.save()
+        post = self._upsert(config, 'post-text-body')
+        blog_import._apply_imported_post_body(
+            post,
+            '<p>Detail <strong>body</strong>.</p>',
+            language=self.language,
+            publisher=self.publisher,
+            site_base='https://nairrpilot.org',
+        )
+        post.set_current_language(self.language)
+        self.assertIn('Detail', post.post_text)
+        self.assertEqual(post.content.get_plugins(self.language).count(), 0)
+
     def test_nairr_config_leaves_author_empty_on_create(self):
         config = self._blog_config('NewsAuthorOff')
         apply_nairr_blog_app_config(config)

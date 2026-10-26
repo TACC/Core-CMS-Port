@@ -375,6 +375,49 @@ def _upsert_post(
     return post
 
 
+def _news_post_body_html(body_html: str, abstract_html: str, *, redirect_tag: bool) -> str:
+    """Detail body for non-redirect posts defaults to the list abstract."""
+    if redirect_tag:
+        return body_html or ''
+    if (body_html or '').strip():
+        return body_html
+    return blog_scrape.build_news_detail_body_from_abstract(abstract_html or '')
+
+
+def _apply_imported_post_body(
+    post: Post,
+    body_html: str,
+    *,
+    language: str,
+    publisher,
+    site_base: str,
+) -> None:
+    """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
+    body_html = (body_html or '').strip()
+    if post.app_config.use_placeholder:
+        post.set_current_language(language)
+        if post.post_text:
+            post.post_text = ''
+            post.save()
+        if not body_html:
+            return
+        populate_blog_post_body_from_html(
+            post,
+            body_html,
+            language,
+            publisher,
+            internal_page_for_url=lambda path, create=False: internal_page_for_url(
+                path, language, create=create
+            ),
+            rewrite_url=rewrite_support_url,
+            site_base=site_base,
+        )
+        return
+    post.set_current_language(language)
+    post.post_text = body_html
+    post.save()
+
+
 def import_news_row(
     config: BlogConfig,
     row: dict,
@@ -392,7 +435,7 @@ def import_news_row(
     title = blog_scrape.plain_news_title(row.get('title') or '')
     site_host = urlparse(site_base).netloc
     redirect_tag = kind in blog_scrape.REDIRECT_KINDS
-    post_text = ''
+    body_html = ''
 
     if kind == 'external_with_redirect':
         redirect = blog_scrape.first_offsite_href(description, site_host)
@@ -420,25 +463,35 @@ def import_news_row(
             abstract = _rewrite_internal_hrefs(
                 blog_scrape.prepare_news_abstract_html(teaser), language, site_base
             )
-            post_text = blog_scrape.build_action_post_text(teaser, href, label)
+            body_html = blog_scrape.build_action_post_text(teaser, href, label)
         else:
             abstract = _rewrite_internal_hrefs(description, language, site_base)
     else:
         abstract = _rewrite_internal_hrefs(description, language, site_base)
 
-    return _upsert_post(
+    body_html = _news_post_body_html(body_html, abstract, redirect_tag=redirect_tag)
+
+    post = _upsert_post(
         config,
         row,
         language=language,
         publisher=publisher,
         no_publish=no_publish,
         abstract_html=abstract,
-        post_text=post_text,
+        post_text='',
         redirect_tag=redirect_tag,
         title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
     )
+    _apply_imported_post_body(
+        post,
+        body_html,
+        language=language,
+        publisher=publisher,
+        site_base=site_base,
+    )
+    return post
 
 
 def import_projects_row(
@@ -470,15 +523,11 @@ def import_projects_row(
         root=root,
         thumbnail_options=thumbnail_options,
     )
-    populate_blog_post_body_from_html(
+    _apply_imported_post_body(
         post,
         body,
-        language,
-        publisher,
-        internal_page_for_url=lambda path, create=False: internal_page_for_url(
-            path, language, create=create
-        ),
-        rewrite_url=rewrite_support_url,
+        language=language,
+        publisher=publisher,
         site_base=site_base,
     )
     return post

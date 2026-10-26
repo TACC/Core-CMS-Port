@@ -160,6 +160,29 @@ class BlogScrapeKindTests(SimpleTestCase):
         out = blog_scrape.visible_teaser_html(html)
         self.assertEqual(out, '<p>Some teaser text.</p>')
 
+    def test_build_news_detail_body_from_abstract_zenodo_list_becomes_buttons(self):
+        html = (
+            '<p>2026 NAIRR Annual Meeting Proceedings and Report now available:</p>'
+            '<ul><li><a href="https://zenodo.org/records/1">NAIRR Conference Final Report</a></li>'
+            '<li><a href="https://zenodo.org/records/2">Proceedings</a></li></ul>'
+        )
+        out = blog_scrape.build_news_detail_body_from_abstract(html)
+        self.assertIn('<p>2026 NAIRR Annual Meeting', out)
+        self.assertNotIn('<ul>', out)
+        self.assertIn('btn btn-primary', out)
+        self.assertIn('NAIRR Conference Final Report', out)
+        self.assertIn('Proceedings</a>', out)
+        self.assertIn('target="_blank"', out)
+
+    def test_action_button_html_sets_target_blank_for_offsite_href(self):
+        html = blog_scrape.build_action_post_text(
+            '<p>Office hours.</p>',
+            'https://ucsd.zoom.us/j/91670805390',
+            'Zoom Link',
+        )
+        self.assertIn('target="_blank"', html)
+        self.assertIn('btn btn-primary', html)
+
     def test_lone_top_level_action_link_splits_zoom_teaser(self):
         html = (
             '<p>Office hours over Zoom.</p>'
