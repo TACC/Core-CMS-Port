@@ -27,7 +27,7 @@ from apps.cms_port.common.blog_app_config import (
     ensure_port_blog_thumbnail_options,
 )
 from apps.cms_port.common.blog_body import populate_blog_post_body_from_html
-from apps.cms_port.common.filer_assets import import_filer_image
+from apps.cms_port.common.filer_assets import delete_filer_image_if_unreferenced, import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
     blog_root_stub_reverse_id,
@@ -315,11 +315,14 @@ def _attach_main_image(
     rel = (row.get('image_file') or '').strip()
     if not rel:
         return
+    previous_main_image_id = post.main_image_id
     path = blog_scrape.blog_dir(root) / rel
     image = import_filer_image(path, publisher, label=row.get('title') or row.get('slug', ''))
     if not image:
         return
     post.main_image = image
+    if previous_main_image_id and previous_main_image_id != image.pk:
+        delete_filer_image_if_unreferenced(previous_main_image_id)
     post.main_image_thumbnail = thumbnail_options.list_option
     post.main_image_full = thumbnail_options.detail_option
 
