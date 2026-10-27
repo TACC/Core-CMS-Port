@@ -239,7 +239,7 @@ NEWS_DATE_OVERRIDES: dict[int, str] = {
 # recurring-schedule info worth keeping; it's moved into the abstract as a bold lead-in.
 NEWS_ABSTRACT_LEAD_INS: dict[int, str] = {
     2: '2nd Tuesday of every month, 12 PM PT/3 PM ET (subject to change for holidays or '
-    'special events',
+    'special events)',
 }
 
 
