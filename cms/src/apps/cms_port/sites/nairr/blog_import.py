@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -42,11 +43,21 @@ from apps.cms_port.sites.nairr import page_registry
 from apps.cms_port.sites.nairr.page_registry import spec_by_slug
 from apps.cms_port.sites.nairr.support_links import rewrite_support_url
 
+# Joomla news id 2 — NAIRR Pilot Office Hours (SCIPE inline; Register here as body CTA).
+_PILOT_OFFICE_HOURS_NEWS_ID = 2
+_PILOT_OFFICE_HOURS_REGISTER_HREF = (
+    'https://access-ci.atlassian.net/servicedesk/customer/portal/5/group/7/create/44'
+)
+
 LEGACY_BLOG_NAMESPACES = {
     'news': ('nairr-news', 'news'),
     'projects': ('nairr-project-highlights', 'project-highlights'),
 }
 EXTERNAL_TAG = blog_scrape.EXTERNAL_TAG_NAME
+
+
+def redirect_blog_tag_name() -> str:
+    return getattr(settings, 'PORTAL_BLOG_TAG_FOR_EXTERNAL_ARTICLES', EXTERNAL_TAG)
 
 
 @dataclass(frozen=True)
@@ -322,7 +333,8 @@ def _upsert_post(
     no_publish: bool,
     abstract_html: str,
     post_text: str,
-    external_tag: bool,
+    redirect_tag: bool,
+    redirect_tag_name: str | None = None,
     title: str | None = None,
     root: Path | None = None,
     thumbnail_options: PortBlogThumbnailOptions | None = None,
@@ -355,9 +367,10 @@ def _upsert_post(
             thumbnail_options=thumbnail_options,
         )
     post.save()
-    ext_tag = Tag.objects.filter(name=EXTERNAL_TAG).first()
-    if external_tag:
-        tag, _ = Tag.objects.get_or_create(name=EXTERNAL_TAG)
+    tag_name = redirect_tag_name or redirect_blog_tag_name()
+    ext_tag = Tag.objects.filter(name=tag_name).first()
+    if redirect_tag:
+        tag, _ = Tag.objects.get_or_create(name=tag_name)
         post.tags.add(tag)
     elif ext_tag:
         post.tags.remove(ext_tag)
@@ -366,6 +379,88 @@ def _upsert_post(
         post.publish = True
         post.save()
     return post
+
+
+def _pilot_office_hours_teaser_and_register(
+    raw_description: str,
+) -> tuple[str, str, str] | None:
+    soup = BeautifulSoup(f'<div>{raw_description}</div>', 'lxml')
+    root = soup.select_one('div')
+    if not root:
+        return None
+    register = root.find('a', href=_PILOT_OFFICE_HOURS_REGISTER_HREF)
+    if not register:
+        return None
+    href = (register.get('href') or '').strip()
+    label = register.get_text(strip=True) or 'Register here'
+    parent = register.parent
+    register.decompose()
+    if parent and parent.name == 'p':
+        for node in reversed(list(parent.children)):
+            if isinstance(node, NavigableString) and node.strip() == '.':
+                node.extract()
+                break
+            if isinstance(node, NavigableString) and node.strip():
+                break
+    teaser = root.decode_contents().strip()
+    if not teaser or not href:
+        return None
+    return teaser, href, label
+
+
+def _news_post_body_html(
+    body_html: str,
+    abstract_html: str,
+    *,
+    redirect_tag: bool,
+    body_from_html: str | None = None,
+) -> str:
+    """Detail body for non-redirect posts defaults to the list abstract.
+
+    ``body_from_html`` is pre-``_rewrite_internal_hrefs`` markup so placeholder import
+    sees Joomla paths (``/opportunities/...``) rather than ``get_absolute_url()`` paths
+    (``/generated/...``).
+    """
+    if redirect_tag:
+        return body_html or ''
+    if (body_html or '').strip():
+        return body_html
+    source = body_from_html if body_from_html is not None else abstract_html
+    return blog_scrape.build_news_detail_body_from_abstract(source or '')
+
+
+def _apply_imported_post_body(
+    post: Post,
+    body_html: str,
+    *,
+    language: str,
+    publisher,
+    site_base: str,
+) -> None:
+    """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
+    body_html = (body_html or '').strip()
+    if post.app_config.use_placeholder:
+        post.set_current_language(language)
+        if post.post_text:
+            post.post_text = ''
+            post.save()
+        if not body_html:
+            return
+        populate_blog_post_body_from_html(
+            post,
+            body_html,
+            language,
+            publisher,
+            internal_page_for_url=lambda path, create=False: internal_page_for_url(
+                path, language, create=create
+            ),
+            rewrite_url=rewrite_support_url,
+            site_base=site_base,
+        )
+        return
+    post.set_current_language(language)
+    post.post_text = body_html
+    post.save()
 
 
 def import_news_row(
@@ -379,24 +474,67 @@ def import_news_row(
     site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
-    kind = row.get('kind', 'external')
-    description = blog_scrape.prepare_news_abstract_html(row.get('abstract_html', ''))
+    kind = blog_scrape.normalize_news_kind(row.get('kind', 'external_sans_redirect'))
+    raw_description = row.get('abstract_html', '')
+    description = blog_scrape.prepare_news_abstract_html(raw_description)
     title = blog_scrape.plain_news_title(row.get('title') or '')
     site_host = urlparse(site_base).netloc
+    redirect_tag = kind in blog_scrape.REDIRECT_KINDS
+    body_html = ''
 
-    if kind == 'external_hidden':
+    if kind == 'external_with_redirect':
         redirect = blog_scrape.first_offsite_href(description, site_host)
         if not redirect:
             redirect = blog_scrape.first_offsite_href(description, '')
         abstract = (
-            blog_scrape.build_external_hidden_abstract(description, redirect)
+            blog_scrape.build_external_hidden_abstract(
+                raw_description,
+                redirect,
+                link_label=redirect_blog_tag_name(),
+            )
             if redirect
-            else description
+            else _rewrite_internal_hrefs(description, language, site_base)
         )
+    elif kind == 'internal_with_redirect':
+        abstract = _rewrite_internal_hrefs(description, language, site_base)
+        if not blog_scrape.first_internal_href(abstract, site_host):
+            internal = blog_scrape.first_internal_href(description, site_host)
+            if internal:
+                abstract = _rewrite_internal_hrefs(
+                    f'<p><a href="{internal}">{title or row.get("slug", "")}</a></p>',
+                    language,
+                    site_base,
+                )
+    elif kind == 'external_sans_redirect':
+        if row.get('id') == _PILOT_OFFICE_HOURS_NEWS_ID:
+            office_hours = _pilot_office_hours_teaser_and_register(raw_description)
+            if office_hours:
+                teaser, href, label = office_hours
+                abstract = _rewrite_internal_hrefs(
+                    blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+                )
+                body_html = blog_scrape.build_action_post_text(teaser, href, label)
+            else:
+                abstract = _rewrite_internal_hrefs(description, language, site_base)
+        elif lone_action := blog_scrape.lone_top_level_action_link(raw_description):
+            teaser, href, label = lone_action
+            abstract = _rewrite_internal_hrefs(
+                blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+            )
+            body_html = blog_scrape.build_action_post_text(teaser, href, label)
+        else:
+            abstract = _rewrite_internal_hrefs(description, language, site_base)
     else:
         abstract = _rewrite_internal_hrefs(description, language, site_base)
 
-    return _upsert_post(
+    body_html = _news_post_body_html(
+        body_html,
+        abstract,
+        redirect_tag=redirect_tag,
+        body_from_html=description,
+    )
+
+    post = _upsert_post(
         config,
         row,
         language=language,
@@ -404,11 +542,19 @@ def import_news_row(
         no_publish=no_publish,
         abstract_html=abstract,
         post_text='',
-        external_tag=True,
+        redirect_tag=redirect_tag,
         title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
     )
+    _apply_imported_post_body(
+        post,
+        body_html,
+        language=language,
+        publisher=publisher,
+        site_base=site_base,
+    )
+    return post
 
 
 def import_projects_row(
@@ -435,20 +581,16 @@ def import_projects_row(
         no_publish=no_publish,
         abstract_html='',
         post_text='',
-        external_tag=False,
+        redirect_tag=False,
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
     )
-    populate_blog_post_body_from_html(
+    _apply_imported_post_body(
         post,
         body,
-        language,
-        publisher,
-        internal_page_for_url=lambda path, create=False: internal_page_for_url(
-            path, language, create=create
-        ),
-        rewrite_url=rewrite_support_url,
+        language=language,
+        publisher=publisher,
         site_base=site_base,
     )
     return post

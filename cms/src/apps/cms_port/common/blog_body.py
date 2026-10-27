@@ -47,6 +47,19 @@ def _anchor_as_button(anchor: Tag) -> bool:
     return bool(classes & BUTTON_CLASS_HINTS)
 
 
+def _offsite_link_target(
+    href: str,
+    site_host: str,
+    internal_page_for_url: Callable | None,
+) -> str:
+    if _is_internal_href(href, site_host, internal_page_for_url):
+        return ''
+    href = (href or '').strip()
+    if href.startswith(('http://', 'https://', '//')):
+        return '_blank'
+    return ''
+
+
 def _is_internal_href(href: str, site_host: str, internal_page_for_url: Callable | None) -> bool:
     href = (href or '').strip()
     if not href or href.startswith('#'):
@@ -123,16 +136,21 @@ def blog_text_from_scrape_node(node: Tag | NavigableString) -> str:
     return sanitize_blog_text_html(_raw_html_for_text_node(node))
 
 
-def _simplify_external_anchor(anchor: Tag) -> None:
+def _simplify_external_anchor(
+    anchor: Tag,
+    *,
+    site_host: str,
+    internal_page_for_url: Callable | None,
+) -> None:
     href = (anchor.get('href') or '').strip()
     if not href:
         return
     text = anchor.get_text()
-    target = (anchor.get('target') or '').strip()
+    link_target = _offsite_link_target(href, site_host, internal_page_for_url)
     anchor.attrs = {}
     anchor['href'] = href
-    if target == '_blank':
-        anchor['target'] = '_blank'
+    if link_target:
+        anchor['target'] = link_target
     anchor.clear()
     anchor.append(text)
 
@@ -157,8 +175,7 @@ def _embed_links_in_fragment(
             anchor.decompose()
             continue
         name = collapse_whitespace(anchor.get_text()) or href
-        target = (anchor.get('target') or '').strip()
-        link_target = target if target == '_blank' else ''
+        link_target = _offsite_link_target(href, site_host, internal_page_for_url)
         if _anchor_as_button(anchor) or _is_internal_href(href, site_host, internal_page_for_url):
             if _anchor_as_button(anchor):
                 link_plugin = builder.add_button_link(
@@ -176,7 +193,11 @@ def _embed_links_in_fragment(
                 )
             anchor.replace_with(BeautifulSoup(plugin_to_tag(link_plugin), 'lxml'))
             continue
-        _simplify_external_anchor(anchor)
+        _simplify_external_anchor(
+            anchor,
+            site_host=site_host,
+            internal_page_for_url=internal_page_for_url,
+        )
     return root.decode_contents()
 
 

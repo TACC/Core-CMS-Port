@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from urllib.parse import urljoin
 
 from cms.api import add_plugin
@@ -78,6 +79,8 @@ class PlaceholderRootGridContainerError(ValueError):
 
 # Stand-in host for site-relative links whose internal page does not exist.
 PLACEHOLDER_SITE_URL = 'https://example.com'
+
+logger = logging.getLogger(__name__)
 
 
 class ContentBuilder:
@@ -366,9 +369,16 @@ class ContentBuilder:
         )
         if internal_page:
             return {'internal_link': internal_page, 'anchor': anchor}
-        if url.startswith('/') and not url.startswith('//'):
+        if base.startswith('/') and not base.startswith('//'):
             # No internal page: external links must be absolute (the admin form rejects `/path`).
-            url = urljoin(PLACEHOLDER_SITE_URL, url)
+            logger.warning(
+                'No CMS page for site-relative link %s; using placeholder host %s',
+                base,
+                PLACEHOLDER_SITE_URL,
+            )
+            url = urljoin(PLACEHOLDER_SITE_URL, base)
+            if anchor:
+                url = f'{url}#{anchor}'
         return {'external_link': url}
 
     def add_card_link(

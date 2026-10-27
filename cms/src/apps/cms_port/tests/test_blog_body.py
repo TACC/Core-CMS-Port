@@ -43,3 +43,23 @@ class BlogBodySanitizeTests(TestCase):
         out = blog_body.blog_text_from_scrape_node(p)
         self.assertIn('href="https://example.org/x"', out)
         self.assertIn('report', out)
+
+    def test_embed_links_sets_target_blank_on_offsite_inline_anchor(self):
+        from unittest.mock import MagicMock
+
+        builder = MagicMock()
+        builder.add_button_link = MagicMock()
+        builder.add_text_link = MagicMock()
+        text_plugin = object()
+        html = '<p>See <a href="https://example.org/x">report</a>.</p>'
+        out = blog_body._embed_links_in_fragment(
+            html,
+            text_plugin,
+            builder,
+            site_host='nairr.example.test',
+            internal_page_for_url=None,
+        )
+        self.assertIn('target="_blank"', out)
+        self.assertIn('href="https://example.org/x"', out)
+        builder.add_button_link.assert_not_called()
+        builder.add_text_link.assert_not_called()

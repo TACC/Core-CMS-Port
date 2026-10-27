@@ -6,6 +6,10 @@ class CmsPortConfig(AppConfig):
     verbose_name = 'CMS third-party site port'
 
     def ready(self):
+        from apps.cms_port.link_urls import patch_bootstrap4_link_internal_urls
+
+        patch_bootstrap4_link_internal_urls()
+
         from django.contrib import admin
 
         from cms.models import Page
