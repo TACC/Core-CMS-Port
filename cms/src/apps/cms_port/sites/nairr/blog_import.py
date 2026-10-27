@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -27,7 +28,7 @@ from apps.cms_port.common.blog_app_config import (
     ensure_port_blog_thumbnail_options,
 )
 from apps.cms_port.common.blog_body import populate_blog_post_body_from_html
-from apps.cms_port.common.filer_assets import import_filer_image
+from apps.cms_port.common.filer_assets import delete_filer_image_if_unreferenced, import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
     blog_root_stub_reverse_id,
@@ -48,6 +49,8 @@ _PILOT_OFFICE_HOURS_NEWS_ID = 2
 _PILOT_OFFICE_HOURS_REGISTER_HREF = (
     'https://access-ci.atlassian.net/servicedesk/customer/portal/5/group/7/create/44'
 )
+# Joomla news id 9 — Join the NAIRR Slack Workspace ("Sign up today!" as body CTA).
+_NAIRR_SLACK_WORKSPACE_NEWS_ID = 9
 
 LEGACY_BLOG_NAMESPACES = {
     'news': ('nairr-news', 'news'),
@@ -315,11 +318,14 @@ def _attach_main_image(
     rel = (row.get('image_file') or '').strip()
     if not rel:
         return
+    previous_main_image_id = post.main_image_id
     path = blog_scrape.blog_dir(root) / rel
     image = import_filer_image(path, publisher, label=row.get('title') or row.get('slug', ''))
     if not image:
         return
     post.main_image = image
+    if previous_main_image_id and previous_main_image_id != image.pk:
+        delete_filer_image_if_unreferenced(previous_main_image_id)
     post.main_image_thumbnail = thumbnail_options.list_option
     post.main_image_full = thumbnail_options.detail_option
 
@@ -379,6 +385,31 @@ def _upsert_post(
         post.publish = True
         post.save()
     return post
+
+
+def _nairr_slack_workspace_teaser_and_signup(
+    raw_description: str,
+) -> tuple[str, str, str] | None:
+    soup = BeautifulSoup(f'<div>{raw_description}</div>', 'lxml')
+    root = soup.select_one('div')
+    if not root:
+        return None
+    anchors = root.find_all('a', href=True)
+    if len(anchors) != 1:
+        return None
+    anchor = anchors[0]
+    href = (anchor.get('href') or '').strip()
+    if not href:
+        return None
+    for node in root.descendants:
+        if isinstance(node, NavigableString):
+            trimmed = re.sub(r'\s*Sign up today!?\s*$', '', str(node), flags=re.IGNORECASE)
+            if trimmed != str(node):
+                node.replace_with(trimmed)
+    teaser = root.decode_contents().strip()
+    if not teaser:
+        return None
+    return teaser, href, 'Sign up today!'
 
 
 def _pilot_office_hours_teaser_and_register(
@@ -510,6 +541,16 @@ def import_news_row(
             office_hours = _pilot_office_hours_teaser_and_register(raw_description)
             if office_hours:
                 teaser, href, label = office_hours
+                abstract = _rewrite_internal_hrefs(
+                    blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+                )
+                body_html = blog_scrape.build_action_post_text(teaser, href, label)
+            else:
+                abstract = _rewrite_internal_hrefs(description, language, site_base)
+        elif row.get('id') == _NAIRR_SLACK_WORKSPACE_NEWS_ID:
+            slack_signup = _nairr_slack_workspace_teaser_and_signup(raw_description)
+            if slack_signup:
+                teaser, href, label = slack_signup
                 abstract = _rewrite_internal_hrefs(
                     blog_scrape.prepare_news_abstract_html(teaser), language, site_base
                 )
