@@ -556,9 +556,15 @@ def visible_teaser_html(description: str) -> str:
     return text or description.strip()
 
 
-def build_external_hidden_abstract(description: str, redirect_url: str) -> str:
+def build_external_hidden_abstract(
+    description: str,
+    redirect_url: str,
+    *,
+    link_label: str | None = None,
+) -> str:
     teaser = visible_teaser_html(description)
+    label = link_label if link_label is not None else EXTERNAL_TAG_NAME
     return (
         f'{teaser}'
-        f'<p hidden="hidden"><a href="{redirect_url}">{EXTERNAL_TAG_NAME}</a></p>'
+        f'<p hidden="hidden"><a href="{redirect_url}">{label}</a></p>'
     )

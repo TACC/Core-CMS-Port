@@ -487,7 +487,11 @@ def import_news_row(
         if not redirect:
             redirect = blog_scrape.first_offsite_href(description, '')
         abstract = (
-            blog_scrape.build_external_hidden_abstract(raw_description, redirect)
+            blog_scrape.build_external_hidden_abstract(
+                raw_description,
+                redirect,
+                link_label=redirect_blog_tag_name(),
+            )
             if redirect
             else _rewrite_internal_hrefs(description, language, site_base)
         )

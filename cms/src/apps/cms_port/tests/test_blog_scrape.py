@@ -75,6 +75,14 @@ class BlogScrapeKindTests(SimpleTestCase):
             'external_with_redirect',
         )
 
+    def test_build_external_hidden_abstract_link_label(self):
+        html = blog_scrape.build_external_hidden_abstract(
+            '<p>Teaser</p>',
+            'https://www.nsf.gov/x',
+            link_label='redirect',
+        )
+        self.assertIn('<p hidden="hidden"><a href="https://www.nsf.gov/x">redirect</a></p>', html)
+
     def test_image_extension_from_url(self):
         self.assertEqual(
             blog_scrape.image_extension_from_url(
