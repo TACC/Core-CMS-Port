@@ -31,6 +31,28 @@ class BlogImportNewsBodyTests(SimpleTestCase):
             '',
         )
 
+    def test_nairr_slack_workspace_joomla_id_9_signup_button_body(self):
+        raw = (
+            '<p>Community members are invited to '
+            '<a href="https://docs.google.com/forms/d/e/1FAIpQLSe-x/viewform">'
+            'join the NAIRR Slack Workspace</a> for access to ongoing timely announcements. '
+            'Sign up today!</p>'
+        )
+        split = blog_import._nairr_slack_workspace_teaser_and_signup(raw)
+        self.assertIsNotNone(split)
+        teaser, href, label = split
+        self.assertEqual(label, 'Sign up today!')
+        self.assertIn('forms', href)
+        self.assertNotIn('Sign up today', teaser)
+        self.assertIn('join the NAIRR Slack Workspace</a>', teaser)
+        body = blog_import._news_post_body_html(
+            blog_scrape.build_action_post_text(teaser, href, label),
+            teaser,
+            redirect_tag=False,
+        )
+        self.assertIn('btn btn-primary', body)
+        self.assertIn('Sign up today!', body)
+
     def test_pilot_office_hours_joomla_id_2_register_button_body(self):
         raw = (
             '<p><strong>2nd Tuesday of every month</strong></p>'
