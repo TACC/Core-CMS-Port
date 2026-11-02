@@ -21,7 +21,11 @@ from djangocms_text_ckeditor.utils import plugin_to_tag
 from filer.models import Image
 
 from apps.cms_port.common.content_builder import ContentBuilder
-from apps.cms_port.common.filer_assets import import_filer_image_from_url
+from apps.cms_port.common.filer_assets import (
+    delete_filer_image_if_unreferenced,
+    filer_picture_ids_in_placeholder,
+    import_filer_image_from_url,
+)
 from apps.cms_port.common.html_text import collapse_whitespace
 
 HEADING_TAGS = frozenset({'h1', 'h2', 'h3', 'h4', 'h5', 'h6'})
@@ -245,7 +249,9 @@ def populate_blog_post_body_from_html(
         return
 
     placeholder = post.content
+    previous_filer_ids = filer_picture_ids_in_placeholder(placeholder, language)
     placeholder.clear(language)
+    new_filer_ids: set[int] = set()
     builder = blog_content_builder(
         placeholder,
         language,
@@ -264,6 +270,8 @@ def populate_blog_post_body_from_html(
     soup = BeautifulSoup(f'<div data-port-blog-body>{body_html}</div>', 'lxml')
     root = soup.select_one('div[data-port-blog-body]')
     if not root:
+        for filer_id in previous_filer_ids:
+            delete_filer_image_if_unreferenced(filer_id)
         return
 
     site_host = _site_host(site_base)
@@ -276,6 +284,8 @@ def populate_blog_post_body_from_html(
             if not src:
                 continue
             image = fetch_image(src, alt or caption or urlparse(src).path.rsplit('/', 1)[-1])
+            if image is not None:
+                new_filer_ids.add(image.pk)
             picture_plugin = builder.add_picture(
                 text_plugin,
                 filer_image=image,
@@ -301,6 +311,10 @@ def populate_blog_post_body_from_html(
     body = sanitize_blog_text_html(''.join(body_parts))
     if not body and not body_parts:
         text_plugin.delete()
+        for filer_id in previous_filer_ids - new_filer_ids:
+            delete_filer_image_if_unreferenced(filer_id)
         return
     text_plugin.body = body
     text_plugin.save()
+    for filer_id in previous_filer_ids - new_filer_ids:
+        delete_filer_image_if_unreferenced(filer_id)
