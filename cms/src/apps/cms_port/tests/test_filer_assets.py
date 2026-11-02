@@ -3,10 +3,11 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.test import TestCase
-from filer.models import Image
+from filer.models import Folder, Image
 
 from apps.cms_port.common.filer_assets import (
     delete_filer_image_if_unreferenced,
+    ensure_filer_folder,
     import_filer_image,
     is_filer_image_referenced,
 )
@@ -45,6 +46,37 @@ class FilerAssetsImportTests(TestCase):
         second = import_filer_image(path, self.owner, label='Highlight Title')
         self.assertEqual(second.pk, first.pk)
         self.assertEqual(Image.objects.filter(original_filename='highlight.png').count(), 1)
+
+    def test_import_places_image_in_nested_filer_folder(self):
+        folder_path = [
+            'Projects',
+            'Project Highlights',
+            '2024',
+            'Wide Area Classroom Series: Expanding National Access to AI and HPC Training',
+        ]
+        data = b'folder-placement-test'
+        path = Path(self._tmp_file('hero.jpg', data))
+        image = import_filer_image(
+            path,
+            self.owner,
+            label='Hero',
+            folder_path=folder_path,
+        )
+        self.assertIsNotNone(image)
+        self.assertIsNotNone(image.folder)
+        names = []
+        folder = image.folder
+        while folder is not None:
+            names.insert(0, folder.name)
+            folder = folder.parent
+        self.assertEqual(names, folder_path)
+
+    def test_ensure_filer_folder_reuses_existing_nodes(self):
+        path = ['Projects', 'Project Highlights', '2024', 'Post A']
+        first = ensure_filer_folder(path, self.owner)
+        second = ensure_filer_folder(path, self.owner)
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(Folder.objects.count(), 4)
 
     def test_sha1_dedupe_still_wins(self):
         data = b'same-bytes'

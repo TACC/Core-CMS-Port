@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
 from django.core.files.base import ContentFile
-from filer.models import Image
+from filer.models import Folder, Image
+
+FILER_FOLDER_NAME_MAX = 255
 
 _GENERIC_IMAGE_FILENAMES = frozenset({'image.jpg', 'image.jpeg', 'image.png', 'image.gif', 'image.webp'})
 
@@ -26,9 +29,63 @@ def _filer_image_needs_file_restore(image: Image) -> bool:
     return width <= 0 or height <= 0
 
 
-def _restore_filer_image_file(image: Image, data: bytes, filename: str) -> Image:
+def _normalize_filer_folder_segment(name: str) -> str:
+    cleaned = (name or '').strip() or 'Untitled'
+    return cleaned[:FILER_FOLDER_NAME_MAX]
+
+
+def ensure_filer_folder(folder_path: Sequence[str], owner) -> Folder | None:
+    """Create or reuse nested Filer folders for ``folder_path`` segment names."""
+    segments = [
+        _normalize_filer_folder_segment(segment)
+        for segment in folder_path
+        if _normalize_filer_folder_segment(segment)
+    ]
+    if not segments:
+        return None
+    parent = None
+    for segment in segments:
+        folder = Folder.objects.filter(name=segment, parent=parent).first()
+        if folder is None:
+            folder = Folder.objects.create(name=segment, parent=parent, owner=owner)
+        parent = folder
+    return parent
+
+
+def _assign_filer_folder(image: Image, folder_path: Sequence[str] | None, owner) -> None:
+    if not folder_path:
+        return
+    folder = ensure_filer_folder(folder_path, owner)
+    if folder is None or image.folder_id == folder.pk:
+        return
+    image.folder = folder
+    image.save(update_fields=['folder'])
+
+
+def _filer_sha1_digest(data: bytes) -> str:
+    return hashlib.sha1(data).hexdigest()
+
+
+def _sync_filer_image_sha1(image: Image, data: bytes) -> Image:
+    digest = _filer_sha1_digest(data)
+    if image.sha1 != digest:
+        image.sha1 = digest
+        image.save(update_fields=['sha1'])
+    return image
+
+
+def _restore_filer_image_file(
+    image: Image,
+    data: bytes,
+    filename: str,
+    *,
+    owner,
+    folder_path: Sequence[str] | None = None,
+) -> Image:
     image.file.save(filename, ContentFile(data), save=False)
     image.save()
+    _sync_filer_image_sha1(image, data)
+    _assign_filer_folder(image, folder_path, owner)
     return image
 
 
@@ -47,10 +104,23 @@ def _find_reusable_broken_filer_image(*, original_filename: str, label: str) -> 
     return None
 
 
-def _save_new_filer_image(owner, data: bytes, filename: str, label: str) -> Image:
-    image = Image(owner=owner, original_filename=filename, name=label[:255] if label else filename)
+def _save_new_filer_image(
+    owner,
+    data: bytes,
+    filename: str,
+    label: str,
+    *,
+    folder_path: Sequence[str] | None = None,
+) -> Image:
+    folder = ensure_filer_folder(folder_path, owner) if folder_path else None
+    image = Image(
+        owner=owner,
+        original_filename=filename,
+        name=label[:255] if label else filename,
+        folder=folder,
+    )
     image.file.save(filename, ContentFile(data), save=True)
-    return image
+    return _sync_filer_image_sha1(image, data)
 
 
 def _import_filer_image_bytes(
@@ -59,28 +129,43 @@ def _import_filer_image_bytes(
     *,
     filename: str,
     label: str,
+    folder_path: Sequence[str] | None = None,
 ) -> Image | None:
     if not data:
         return None
-    digest = hashlib.sha1(data).hexdigest()
+    digest = _filer_sha1_digest(data)
     existing = Image.objects.filter(sha1=digest).first()
     if existing:
         if _filer_image_needs_file_restore(existing):
-            return _restore_filer_image_file(existing, data, filename)
+            return _restore_filer_image_file(
+                existing, data, filename, owner=owner, folder_path=folder_path
+            )
         return existing
     broken = _find_reusable_broken_filer_image(original_filename=filename, label=label)
     if broken:
-        return _restore_filer_image_file(broken, data, filename)
-    return _save_new_filer_image(owner, data, filename, label)
+        return _restore_filer_image_file(
+            broken, data, filename, owner=owner, folder_path=folder_path
+        )
+    return _save_new_filer_image(
+        owner, data, filename, label, folder_path=folder_path
+    )
 
 
-def import_filer_image(path: Path, owner, *, label: str) -> Image | None:
+def import_filer_image(
+    path: Path,
+    owner,
+    *,
+    label: str,
+    folder_path: Sequence[str] | None = None,
+) -> Image | None:
     if not path.is_file():
         return None
     data = path.read_bytes()
     if not data:
         return None
-    return _import_filer_image_bytes(data, owner, filename=path.name, label=label)
+    return _import_filer_image_bytes(
+        data, owner, filename=path.name, label=label, folder_path=folder_path
+    )
 
 
 def import_filer_image_from_url(
@@ -89,6 +174,7 @@ def import_filer_image_from_url(
     *,
     label: str,
     session: requests.Session | None = None,
+    folder_path: Sequence[str] | None = None,
 ) -> Image | None:
     url = (url or '').strip()
     if not url.startswith('http'):
@@ -101,7 +187,9 @@ def import_filer_image_from_url(
     filename = Path(path).name or 'image.jpg'
     if '.' not in filename:
         filename = f'{filename}.jpg'
-    return _import_filer_image_bytes(data, owner, filename=filename, label=label)
+    return _import_filer_image_bytes(
+        data, owner, filename=filename, label=label, folder_path=folder_path
+    )
 
 
 def filer_picture_ids_in_placeholder(placeholder, language: str) -> set[int]:

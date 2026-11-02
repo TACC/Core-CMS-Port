@@ -31,6 +31,24 @@ class BlogImportNewsBodyTests(SimpleTestCase):
             '',
         )
 
+    def test_blog_post_filer_folder_path_matches_page_tree(self):
+        target = blog_import.BLOG_TARGETS['projects']
+        row = {'slug': 'wide-area-classroom', 'date': 'March 15, 2024'}
+        path = blog_import._blog_post_filer_folder_path(
+            target,
+            post_title='Wide Area Classroom Series: Expanding National Access to AI and HPC Training',
+            row=row,
+        )
+        self.assertEqual(
+            path,
+            [
+                'Projects',
+                'Project Highlights',
+                '2024',
+                'Wide Area Classroom Series: Expanding National Access to AI and HPC Training',
+            ],
+        )
+
     def test_nairr_slack_workspace_joomla_id_9_signup_button_body(self):
         raw = (
             '<p>Community members are invited to '
