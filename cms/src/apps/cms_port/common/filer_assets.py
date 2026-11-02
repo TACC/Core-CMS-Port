@@ -66,12 +66,11 @@ def _filer_sha1_digest(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
-def _sync_filer_image_sha1(image: Image, data: bytes) -> Image:
+def _persist_filer_sha1(image: Image, data: bytes) -> None:
     digest = _filer_sha1_digest(data)
     if image.sha1 != digest:
         image.sha1 = digest
         image.save(update_fields=['sha1'])
-    return image
 
 
 def _restore_filer_image_file(
@@ -84,7 +83,7 @@ def _restore_filer_image_file(
 ) -> Image:
     image.file.save(filename, ContentFile(data), save=False)
     image.save()
-    _sync_filer_image_sha1(image, data)
+    _persist_filer_sha1(image, data)
     _assign_filer_folder(image, folder_path, owner)
     return image
 
@@ -120,7 +119,8 @@ def _save_new_filer_image(
         folder=folder,
     )
     image.file.save(filename, ContentFile(data), save=True)
-    return _sync_filer_image_sha1(image, data)
+    _persist_filer_sha1(image, data)
+    return image
 
 
 def _import_filer_image_bytes(
