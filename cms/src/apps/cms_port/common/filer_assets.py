@@ -26,9 +26,17 @@ def _filer_image_needs_file_restore(image: Image) -> bool:
     return width <= 0 or height <= 0
 
 
+def _persist_filer_sha1(image: Image, data: bytes) -> None:
+    digest = hashlib.sha1(data).hexdigest()
+    if image.sha1 != digest:
+        image.sha1 = digest
+        image.save(update_fields=['sha1'])
+
+
 def _restore_filer_image_file(image: Image, data: bytes, filename: str) -> Image:
     image.file.save(filename, ContentFile(data), save=False)
     image.save()
+    _persist_filer_sha1(image, data)
     return image
 
 
@@ -50,6 +58,7 @@ def _find_reusable_broken_filer_image(*, original_filename: str, label: str) -> 
 def _save_new_filer_image(owner, data: bytes, filename: str, label: str) -> Image:
     image = Image(owner=owner, original_filename=filename, name=label[:255] if label else filename)
     image.file.save(filename, ContentFile(data), save=True)
+    _persist_filer_sha1(image, data)
     return image
 
 
