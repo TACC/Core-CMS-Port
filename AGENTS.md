@@ -30,6 +30,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 - [Scrape / Import Scope](#scrape--import-scope)
 - [Git Worktrees and Docker](#git-worktrees-and-docker)
+- [Agent instances](#agent-instances)
 - [Section Labels](#section-labels)
 - [Project-Specific](#project-specific)
 
@@ -60,6 +61,12 @@ Scrape third-party pages, then import into django CMS.
 #### Git Worktrees and Docker
 
 Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker).
+
+#### Agent instances
+
+For a dedicated local port (worktree + `docker-compose.agent-<port>.yml`), follow [`.agents/skills/core-cms-agent-instance/SKILL.md`](.agents/skills/core-cms-agent-instance/SKILL.md) (`core-cms-agent-instance`): compose file beside `cms/docker-compose.dev.yml` in the **main** checkout, `-p cms<port>`, verify mounts before calling the instance done.
+
+NAIRR (and other sites): bind `settings_custom.py` per [`docs/site-<site>.md`](docs/site-nairr.md) (e.g. camino `cms.settings_custom.py` for NAIRR)—not covered by Core-CMS AGENTS alone.
 
 #### Section Labels
 
