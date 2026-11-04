@@ -11,6 +11,7 @@ nested inside that Text block (``<cms-plugin>`` tags in the body). Joomla scrape
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Callable
 from urllib.parse import urlparse
 
@@ -243,6 +244,7 @@ def populate_blog_post_body_from_html(
     rewrite_url: Callable | None = None,
     site_base: str = '',
     image_fetcher: Callable[[str, str], Image | None] | None = None,
+    filer_folder_path: Sequence[str] | None = None,
 ) -> None:
     """Replace ``post.content`` with one Text plugin (nested Picture / Image plugins in order)."""
     if not body_html or not str(body_html).strip():
@@ -263,7 +265,13 @@ def populate_blog_post_body_from_html(
     session.headers.update({'User-Agent': 'TACC-CMS-Port-Blog-Import/1.0'})
 
     def default_image_fetcher(url: str, label: str) -> Image | None:
-        return import_filer_image_from_url(url, publisher, label=label, session=session)
+        return import_filer_image_from_url(
+            url,
+            publisher,
+            label=label,
+            session=session,
+            folder_path=filer_folder_path,
+        )
 
     fetch_image = image_fetcher or default_image_fetcher
 

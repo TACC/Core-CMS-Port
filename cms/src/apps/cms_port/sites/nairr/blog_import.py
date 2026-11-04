@@ -106,6 +106,27 @@ SAME_DAY_ORDER_HOURS = 3
 PROJECTS_FEED_PUBLISH_BASE = datetime(2024, 6, 1, 12, 0, 0)
 
 
+def _blog_post_filer_folder_path(
+    target: BlogTarget,
+    *,
+    post_title: str,
+    row: dict,
+) -> list[str]:
+    """Filer path: CMS page ancestors → blog page → publish year → post title."""
+    segments: list[str] = []
+    slug = target.page_slug
+    while slug:
+        spec = spec_by_slug(slug)
+        if not spec:
+            break
+        segments.insert(0, spec.title)
+        slug = spec.parent_slug or ''
+    published = _resolve_post_datetime(row)
+    segments.append(str(published.year))
+    segments.append((post_title or row.get('slug') or 'Untitled').strip())
+    return segments
+
+
 def _resolve_post_datetime(row: dict):
     """``date_published`` from display ``date`` (News) or highlights ``feed_rank`` (Projects)."""
     date_value = str(row.get('date', '')).strip()
@@ -314,13 +335,19 @@ def _attach_main_image(
     root: Path,
     publisher,
     thumbnail_options: PortBlogThumbnailOptions,
+    filer_folder_path: list[str] | None = None,
 ) -> None:
     rel = (row.get('image_file') or '').strip()
     if not rel:
         return
     previous_main_image_id = post.main_image_id
     path = blog_scrape.blog_dir(root) / rel
-    image = import_filer_image(path, publisher, label=row.get('title') or row.get('slug', ''))
+    image = import_filer_image(
+        path,
+        publisher,
+        label=row.get('title') or row.get('slug', ''),
+        folder_path=filer_folder_path,
+    )
     if not image:
         return
     post.main_image = image
@@ -344,6 +371,7 @@ def _upsert_post(
     title: str | None = None,
     root: Path | None = None,
     thumbnail_options: PortBlogThumbnailOptions | None = None,
+    filer_folder_path: list[str] | None = None,
 ) -> Post:
     resolved_title = title or row.get('title') or row['slug']
     post = (
@@ -371,6 +399,7 @@ def _upsert_post(
             root=root,
             publisher=publisher,
             thumbnail_options=thumbnail_options,
+            filer_folder_path=filer_folder_path,
         )
     post.save()
     tag_name = redirect_tag_name or redirect_blog_tag_name()
@@ -467,6 +496,7 @@ def _apply_imported_post_body(
     language: str,
     publisher,
     site_base: str,
+    filer_folder_path: list[str] | None = None,
 ) -> None:
     """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
     body_html = (body_html or '').strip()
@@ -487,6 +517,7 @@ def _apply_imported_post_body(
             ),
             rewrite_url=rewrite_support_url,
             site_base=site_base,
+            filer_folder_path=filer_folder_path,
         )
         return
     post.set_current_language(language)
@@ -498,6 +529,7 @@ def import_news_row(
     config: BlogConfig,
     row: dict,
     *,
+    target: BlogTarget,
     root: Path,
     language: str,
     publisher,
@@ -575,6 +607,10 @@ def import_news_row(
         body_from_html=description,
     )
 
+    resolved_title = title or row.get('title') or row['slug']
+    filer_folder_path = _blog_post_filer_folder_path(
+        target, post_title=resolved_title, row=row
+    )
     post = _upsert_post(
         config,
         row,
@@ -587,6 +623,7 @@ def import_news_row(
         title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
+        filer_folder_path=filer_folder_path,
     )
     _apply_imported_post_body(
         post,
@@ -594,6 +631,7 @@ def import_news_row(
         language=language,
         publisher=publisher,
         site_base=site_base,
+        filer_folder_path=filer_folder_path,
     )
     return post
 
@@ -602,6 +640,7 @@ def import_projects_row(
     config: BlogConfig,
     row: dict,
     *,
+    target: BlogTarget,
     root: Path,
     language: str,
     publisher,
@@ -614,6 +653,10 @@ def import_projects_row(
     title, body = _split_title_body(html) if html else ('', '')
     if body:
         body = _rewrite_internal_hrefs(body, language, site_base)
+    resolved_title = title or row.get('title') or row['slug']
+    filer_folder_path = _blog_post_filer_folder_path(
+        target, post_title=resolved_title, row=row
+    )
     post = _upsert_post(
         config,
         row,
@@ -626,6 +669,7 @@ def import_projects_row(
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
+        filer_folder_path=filer_folder_path,
     )
     _apply_imported_post_body(
         post,
@@ -633,6 +677,7 @@ def import_projects_row(
         language=language,
         publisher=publisher,
         site_base=site_base,
+        filer_folder_path=filer_folder_path,
     )
     return post
 
@@ -656,6 +701,7 @@ def import_blog(
         importer = lambda row: import_news_row(
             config,
             row,
+            target=target,
             root=root,
             language=language,
             publisher=publisher,
@@ -668,6 +714,7 @@ def import_blog(
         importer = lambda row: import_projects_row(
             config,
             row,
+            target=target,
             root=root,
             language=language,
             publisher=publisher,
