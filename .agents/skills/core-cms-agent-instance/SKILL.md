@@ -71,9 +71,10 @@ Required before calling setup done:
 
 1. **Mounts** — Bind mounts match the active worktree (and any external paths your repo documents):
 
-   Compare mount `Source` values from `docker inspect` to the absolute paths in `docker-compose.agent-<port>.yml`. Paths meant to come from the port worktree must sit under that worktree’s directory, not an old or removed checkout. External paths (for example shared deploy settings) must match what the client repo documents.
+   Compare each bind mount’s **host path** from `docker inspect` to the absolute paths in `docker-compose.agent-<port>.yml`. Paths meant to come from the port worktree must sit under that worktree’s directory, not an old or removed checkout. External paths (for example shared deploy settings) must match what the client repo documents.
 
    ```bash
+   # container path <- host path
    docker inspect core_cms_<port> --format '{{range .Mounts}}{{.Destination}} <- {{.Source}}{{"\n"}}{{end}}'
    ```
 

@@ -30,7 +30,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 - [Scrape / Import Scope](#scrape--import-scope)
 - [Git Worktrees and Docker](#git-worktrees-and-docker)
-- [Agent instances](#agent-instances)
+- [Agent Instances](#agent-instances)
 - [Section Labels](#section-labels)
 - [Project-Specific](#project-specific)
 
@@ -62,7 +62,7 @@ Scrape third-party pages, then import into django CMS.
 
 Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker).
 
-#### Agent instances
+#### Agent Instances
 
 For a dedicated local port (worktree + `docker-compose.agent-<port>.yml`), follow [`.agents/skills/core-cms-agent-instance/SKILL.md`](.agents/skills/core-cms-agent-instance/SKILL.md) (`core-cms-agent-instance`): gitignored compose file in the **main** checkout beside `docker-compose.dev.yml`, `-p cms<port>`, verify mounts before calling the instance done.
 
