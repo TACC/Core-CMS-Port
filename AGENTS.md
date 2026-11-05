@@ -66,7 +66,7 @@ Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/bl
 
 For a dedicated local port (worktree + `docker-compose.agent-<port>.yml`), follow [`.agents/skills/core-cms-agent-instance/SKILL.md`](.agents/skills/core-cms-agent-instance/SKILL.md) (`core-cms-agent-instance`): compose file beside `cms/docker-compose.dev.yml` in the **main** checkout, `-p cms<port>`, verify mounts before calling the instance done.
 
-NAIRR (and other sites): bind `settings_custom.py` per [`docs/site-<site>.md`](docs/site-nairr.md) (e.g. camino `cms.settings_custom.py` for NAIRR). Core-CMS AGENTS covers generic worktree Docker only; which host file to bind for each port site is documented here.
+Specific websites, e.g. NAIRR (from Core-CMS-Port), may bind `settings_custom.py` from [TACC/Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments) — the specific site's repo or the human may define whether and how to do this.
 
 #### Section Labels
 
