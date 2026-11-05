@@ -64,9 +64,7 @@ Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/bl
 
 #### Agent Instances
 
-For a dedicated local port (worktree + `docker-compose.agent-<port>.yml`), follow **`core-cms-agent-instance`** in [TACC/Core-CMS](https://github.com/TACC/Core-CMS/blob/docs/core-cms-agent-instance-skill/.agents/skills/core-cms-agent-instance/SKILL.md) (local alias: [`.agents/skills/core-cms-agent-instance/SKILL.md`](.agents/skills/core-cms-agent-instance/SKILL.md)): gitignored compose in the **main** checkout beside `docker-compose.dev.yml`, `-p cms<port>`, verify mounts before calling setup done.
-
-Specific websites, e.g. NAIRR (from [Core-CMS-Port](https://github.com/TACC/Core-CMS-Port)), may bind `settings_custom.py` from [TACC/Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments) — the specific site's repo or the human may define whether and how to do this.
+Follow [Core-CMS `core-cms-agent-instance-skill`](https://github.com/TACC/Core-CMS/blob/docs/core-cms-agent-instance-skill/.agents/skills/core-cms-agent-instance/SKILL.md).
 
 #### Section Labels
 
