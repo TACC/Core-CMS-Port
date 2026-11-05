@@ -23,7 +23,7 @@ Keep these aligned:
 | Thing | Pattern | Example |
 | --- | --- | --- |
 | Worktree Directory Basename | `<port>` | `8002` |
-| Compose File (Main Checkout Only) | `docker-compose.agent-<port>.yml` next to `docker-compose.dev.yml` | `docker-compose.agent-8002.yml` |
+| Compose File (Main Checkout Only) | `docker-compose.agent-<port>.yml` in the same directory as `docker-compose.dev.yml` | `docker-compose.agent-8002.yml` |
 | Compose Project | `-p cms<port>` | `-p cms8002` |
 | CMS Container | `core_cms_<port>` | `core_cms_8002` |
 | Postgres Container | `core_cms_postgres_<port>` | `core_cms_postgres_8002` |
@@ -51,13 +51,13 @@ Open the **port worktree** as the agent workspace when doing instance work.
 
 ## Compose File
 
-- If `docker-compose.agent-<port>.yml` is missing beside `docker-compose.dev.yml` in the **main checkout**, copy [`docker-compose.agent.example.yml`](https://github.com/TACC/Core-CMS/blob/main/docker-compose.agent.example.yml) (or an existing `docker-compose.agent-*.yml` in that directory) and replace **every** absolute path: `build.context`, bind mounts under the active worktree, and `127.0.0.1:<port>:8000`.
-- Keep the compose file in the **main checkout** next to `docker-compose.dev.yml`, even when the worktree path is elsewhere.
-- Site-specific `settings_custom.py` bind mounts belong in that compose file per your repo’s docs (Core-CMS-Port: [AGENTS.md — Agent instances](../../../AGENTS.md#agent-instances) and per-site `docs/site-<site>.md`).
+- If `docker-compose.agent-<port>.yml` is missing in the **main checkout**, copy [`docker-compose.agent.example.yml`](https://github.com/TACC/Core-CMS/blob/main/docker-compose.agent.example.yml) (or an existing `docker-compose.agent-*.yml` next to this repo’s `docker-compose.dev.yml`) and replace **every** absolute path: `build.context`, bind mounts under the active worktree, and `127.0.0.1:<port>:8000`.
+- Keep the compose file in the **main checkout** in the same directory as `docker-compose.dev.yml`, even when the worktree path is elsewhere.
+- Some client repos bind `settings_custom.py` or other settings from shared deploy repos (for example NAIRR via [Core-Portal-Deployments](https://github.com/TACC/Core-Portal-Deployments)). Read that client’s AGENTS.md and site docs when present; follow those mounts so agent instances match production when instructions exist.
 
 ## Start Or Repoint Instance
 
-From the **main checkout** directory that contains `docker-compose.dev.yml`:
+From the **main checkout** directory that contains this repo’s `docker-compose.dev.yml`:
 
 ```bash
 docker compose -f docker-compose.agent-<port>.yml -p cms<port> up -d --build
@@ -69,13 +69,13 @@ Re-run after any compose path change so mounts refresh (stale mounts often show 
 
 Required before calling setup done:
 
-1. **Mounts** — `/code/apps` is the active worktree:
+1. **Mounts** — Bind mounts match the active worktree (and any external paths your repo documents):
+
+   Compare mount `Source` values from `docker inspect` to the absolute paths in `docker-compose.agent-<port>.yml`. Paths meant to come from the port worktree must sit under that worktree’s directory, not an old or removed checkout. External paths (for example shared deploy settings) must match what the client repo documents.
 
    ```bash
-   docker inspect core_cms_<port> --format '{{range .Mounts}}{{if eq .Destination "/code/apps"}}{{.Source}}{{end}}{{end}}'
+   docker inspect core_cms_<port> --format '{{range .Mounts}}{{.Destination}} <- {{.Source}}{{"\n"}}{{end}}'
    ```
-
-   Must end with `.../<worktree>/cms/src/apps` (adjust if your layout differs).
 
 2. **HTTP** — after a few seconds: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:<port>/` → `200` (or expected redirect).
 
