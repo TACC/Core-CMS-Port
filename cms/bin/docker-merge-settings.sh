@@ -9,5 +9,10 @@ if [ -f /code/taccsite_cms/settings_from_host/settings_default.py ]; then
   cp /code/taccsite_cms/settings_from_host/settings_default.py /code/taccsite_cms/settings/settings_default.py
 fi
 
+# Gitignored local overrides (e.g. PORTAL_SCRAPE_SITE, PORTAL_STYLES) live on the host mount.
+if [ -f /code/taccsite_cms/settings_from_host/settings_custom.py ]; then
+  cp /code/taccsite_cms/settings_from_host/settings_custom.py /code/taccsite_cms/settings/settings_custom.py
+fi
+
 # To run docker "command"
 exec "$@"

@@ -7,7 +7,7 @@ Port of NAIRR Pilot (Joomla at [nairrpilot.org](https://nairrpilot.org)) into Co
 
 ## Settings
 
-Local instances use a `.gitignore`d [`cms/src/taccsite_cms/settings/settings_custom.py`](../cms/src/taccsite_cms/settings/settings_custom.py) in the worktree that is bootstrapped or synced from source-of-truth [Camino `cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py). (Agents, see [AGENTS.md](../AGENTS.md#git-worktrees-and-docker)). It must contain:
+Local instances mount `settings_custom.py` from [Core-Portal-Deployments `nairr-oc/camino/cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py). (Agents, see [AGENTS.md](../AGENTS.md#git-worktrees-and-docker)). It must contain:
 
 ```py
 PORTAL_SCRAPE_SITE = 'nairr'
