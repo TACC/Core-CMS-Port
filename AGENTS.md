@@ -30,6 +30,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 - [Scrape / Import Scope](#scrape--import-scope)
 - [Git Worktrees and Docker](#git-worktrees-and-docker)
+- [Agent Instances](#agent-instances)
 - [Section Labels](#section-labels)
 - [Project-Specific](#project-specific)
 
@@ -60,6 +61,10 @@ Scrape third-party pages, then import into django CMS.
 #### Git Worktrees and Docker
 
 Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker).
+
+#### Agent Instances
+
+Follow [Core-CMS `core-cms-agent-instance`](https://github.com/TACC/Core-CMS/blob/main/.agents/skills/core-cms-agent-instance/SKILL.md).
 
 #### Section Labels
 
