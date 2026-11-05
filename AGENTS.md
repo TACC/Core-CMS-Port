@@ -30,6 +30,7 @@ Run `make` and other CMS dev workflows from `cms/`. Follow [Core-CMS "Architectu
 
 - [Scrape / Import Scope](#scrape--import-scope)
 - [Git Worktrees and Docker](#git-worktrees-and-docker)
+- [Agent Instances](#agent-instances)
 - [Section Labels](#section-labels)
 - [Project-Specific](#project-specific)
 
@@ -48,11 +49,24 @@ Scrape third-party pages, then import into django CMS.
 - Prefer extending existing `plugin_builders` / `page_registry` paths for the page at hand.
 - **`create_pages` Generated tree (all sites):** After import, every page under **Generated** gets `in_navigation=True`. Each **direct child** of **Generated** that has child pages but no content plugins redirects to its first child (folder-only section rows). The **Generated** container itself is hidden from navigation unless you pass **`--show-generated-in-nav`**, which you should **always** pass when running `create_pages` locally.
 
+#### CMS Plugins
+
+##### Images
+
+- For **in-page media**, use **Picture / Image (Responsive)** — ``Bootstrap4PicturePlugin`` in code (`ContentBuilder.add_picture`). Do **not** add the generic **Image** plugin (`PicturePlugin`, editor label “Image”); it lacks Bootstrap picture features Core-CMS sites rely on.
+- Exception: only use generic **Image** when the content truly cannot use responsive picture options (rare; confirm with a human before import code does this).
+- **Filer** `Image` models in Python (`import_filer_image`, etc.) are storage — not CMS plugins. Say **Picture / Image** for editor-facing plugins.
+- Guard: `apps.cms_port.tests.test_port_cms_plugins` fails if port code registers generic `PicturePlugin` for imports.
+
 #### Git Worktrees and Docker
 
 Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/blob/main/AGENTS.md#git-worktrees-and-docker).
 
 Bind-mount `cms/src/taccsite_cms/settings/settings_custom.py` and `settings_local.py` onto the same paths under `/code/taccsite_cms/settings/` in `docker-compose.agent-<port>.yml`. **`settings_custom` canon** is the deploy repo (e.g. NAIRR: [Core-Portal-Deployments `nairr-oc/camino/cms.settings_custom.py`](https://github.com/TACC/Core-Portal-Deployments/blob/main/nairr-oc/camino/cms.settings_custom.py)). **`settings_local`** is per-worktree dev only—bootstrap from [Core-CMS `settings_local.example.py`](https://github.com/TACC/Core-CMS/blob/main/taccsite_cms/settings/settings_local.example.py) (e.g. distinct `SESSION_COOKIE_NAME` per port). Do not treat the `core_cms_*_settings_data` volume as the place to edit either file. Tools that replace a file (`sed -i`, some editors) break its single-file mount; restart the container.
+
+#### Agent Instances
+
+Follow [Core-CMS `core-cms-agent-instance`](https://github.com/TACC/Core-CMS/blob/main/.agents/skills/core-cms-agent-instance/SKILL.md).
 
 #### Section Labels
 
@@ -78,6 +92,8 @@ When building **cards** from scraped Joomla HTML (`plugin_builders`):
 - Home **stats** (`section.stats`): one Card per figure (`add_card_stat_text`), not Joomla `div.inner` / `statBox` / `major` / `minor` markup.
 - Do **not** copy Joomla wrapper `<div>`s and classes (e.g. `with-controls`, `content`, `more-buttons`) into card text unless they map to styles this CMS actually loads. Unwrap or drop them when unsure.
 - If you are unsure whether a scraped class is still needed, **ask** before preserving it.
+
+**News import kinds** (`classify_news_item` in `sites/nairr/blog_scrape.py`): `external_with_redirect`, `external_sans_redirect`, `internal_with_redirect`, `internal_sans_redirect`. Only the two `*_with_redirect` kinds get the blog tag from `PORTAL_BLOG_TAG_FOR_EXTERNAL_ARTICLES` (not every off-site teaser link). More than one teaser link → always `*_sans_redirect`. NSF-style “Learn more at …” teasers → `external_with_redirect` + hidden canonical lead link; Zoom/PDF/action links → `external_sans_redirect` with on-site detail body when needed.
 
 ### Services
 

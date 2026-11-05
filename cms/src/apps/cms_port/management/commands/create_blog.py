@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from apps.cms_port.common.django_site import ensure_portal_cms_site_domain
 from apps.cms_port.site_loader import default_site_id, load_site
 from apps.cms_port.sites.nairr import blog_import
 
@@ -44,6 +45,9 @@ class Command(BaseCommand):
                 f'Would import blog={options["blog"]} from {root} (slug={options.get("slug")!r})'
             )
             return
+
+        if ensure_portal_cms_site_domain():
+            self.stdout.write('Updated django.contrib.sites domain from PORTAL_CMS_SITE_DOMAIN.')
 
         if not options['replace'] and options['slug'] is None:
             self.stdout.write('Upserting posts (pass --replace to emphasize overwrite).')

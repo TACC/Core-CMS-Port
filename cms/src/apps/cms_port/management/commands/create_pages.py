@@ -19,6 +19,7 @@ from django.core.management.base import BaseCommand, CommandError
 from cms.api import create_page, publish_page
 from cms.models import Page
 
+from apps.cms_port.common.django_site import ensure_portal_cms_site_domain
 from apps.cms_port.common.registry_pages import adopt_registry_reverse_id, find_page_for_registry_slug
 from apps.cms_port.site_loader import load_site
 
@@ -84,6 +85,9 @@ class Command(BaseCommand):
         publisher = User.objects.filter(is_superuser=True).first()
         if not publisher and not options['dry_run']:
             raise CommandError('No superuser found.')
+
+        if not options['dry_run'] and ensure_portal_cms_site_domain():
+            self.stdout.write('Updated django.contrib.sites domain from PORTAL_CMS_SITE_DOMAIN.')
 
         specs = import_pages.ordered_specs()
         if options['tested']:

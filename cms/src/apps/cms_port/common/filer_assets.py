@@ -3,23 +3,224 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from pathlib import Path
+from urllib.parse import urlparse
 
+import requests
 from django.core.files.base import ContentFile
-from filer.models import Image
+from filer.models import Folder, Image
+
+FILER_FOLDER_NAME_MAX = 255
+
+_GENERIC_IMAGE_FILENAMES = frozenset({'image.jpg', 'image.jpeg', 'image.png', 'image.gif', 'image.webp'})
 
 
-def import_filer_image(path: Path, owner, *, label: str) -> Image | None:
+def _filer_image_needs_file_restore(image: Image) -> bool:
+    if not image.file or not image.file.name:
+        return True
+    try:
+        if not image.file.storage.exists(image.file.name):
+            return True
+    except OSError:
+        return True
+    width = image.width or 0
+    height = image.height or 0
+    return width <= 0 or height <= 0
+
+
+def _normalize_filer_folder_segment(name: str) -> str:
+    cleaned = (name or '').strip() or 'Untitled'
+    return cleaned[:FILER_FOLDER_NAME_MAX]
+
+
+def ensure_filer_folder(folder_path: Sequence[str], owner) -> Folder | None:
+    """Create or reuse nested Filer folders for ``folder_path`` segment names."""
+    segments = [
+        _normalize_filer_folder_segment(segment)
+        for segment in folder_path
+        if _normalize_filer_folder_segment(segment)
+    ]
+    if not segments:
+        return None
+    parent = None
+    for segment in segments:
+        folder = Folder.objects.filter(name=segment, parent=parent).first()
+        if folder is None:
+            folder = Folder.objects.create(name=segment, parent=parent, owner=owner)
+        parent = folder
+    return parent
+
+
+def _assign_filer_folder(image: Image, folder_path: Sequence[str] | None, owner) -> None:
+    if not folder_path:
+        return
+    folder = ensure_filer_folder(folder_path, owner)
+    if folder is None or image.folder_id == folder.pk:
+        return
+    image.folder = folder
+    image.save(update_fields=['folder'])
+
+
+def _filer_sha1_digest(data: bytes) -> str:
+    return hashlib.sha1(data).hexdigest()
+
+
+def _persist_filer_sha1(image: Image, data: bytes) -> None:
+    digest = _filer_sha1_digest(data)
+    if image.sha1 != digest:
+        image.sha1 = digest
+        image.save(update_fields=['sha1'])
+
+
+def _restore_filer_image_file(
+    image: Image,
+    data: bytes,
+    filename: str,
+    *,
+    owner,
+    folder_path: Sequence[str] | None = None,
+) -> Image:
+    image.file.save(filename, ContentFile(data), save=False)
+    image.save()
+    _persist_filer_sha1(image, data)
+    _assign_filer_folder(image, folder_path, owner)
+    return image
+
+
+def _find_reusable_broken_filer_image(*, original_filename: str, label: str) -> Image | None:
+    """Reuse a broken Filer row after media loss so re-import does not mint duplicates."""
+    filename = (original_filename or '').strip()
+    if filename:
+        for image in Image.objects.filter(original_filename=filename).order_by('pk'):
+            if _filer_image_needs_file_restore(image):
+                return image
+    name = (label or '').strip()[:255]
+    if name and (not filename or Path(filename).name.lower() in _GENERIC_IMAGE_FILENAMES):
+        for image in Image.objects.filter(name=name).order_by('pk'):
+            if _filer_image_needs_file_restore(image):
+                return image
+    return None
+
+
+def _save_new_filer_image(
+    owner,
+    data: bytes,
+    filename: str,
+    label: str,
+    *,
+    folder_path: Sequence[str] | None = None,
+) -> Image:
+    folder = ensure_filer_folder(folder_path, owner) if folder_path else None
+    image = Image(
+        owner=owner,
+        original_filename=filename,
+        name=label[:255] if label else filename,
+        folder=folder,
+    )
+    image.file.save(filename, ContentFile(data), save=True)
+    _persist_filer_sha1(image, data)
+    return image
+
+
+def _import_filer_image_bytes(
+    data: bytes,
+    owner,
+    *,
+    filename: str,
+    label: str,
+    folder_path: Sequence[str] | None = None,
+) -> Image | None:
+    if not data:
+        return None
+    digest = _filer_sha1_digest(data)
+    existing = Image.objects.filter(sha1=digest).first()
+    if existing:
+        if _filer_image_needs_file_restore(existing):
+            return _restore_filer_image_file(
+                existing, data, filename, owner=owner, folder_path=folder_path
+            )
+        return existing
+    broken = _find_reusable_broken_filer_image(original_filename=filename, label=label)
+    if broken:
+        return _restore_filer_image_file(
+            broken, data, filename, owner=owner, folder_path=folder_path
+        )
+    return _save_new_filer_image(
+        owner, data, filename, label, folder_path=folder_path
+    )
+
+
+def import_filer_image(
+    path: Path,
+    owner,
+    *,
+    label: str,
+    folder_path: Sequence[str] | None = None,
+) -> Image | None:
     if not path.is_file():
         return None
     data = path.read_bytes()
     if not data:
         return None
-    digest = hashlib.sha1(data).hexdigest()
-    existing = Image.objects.filter(sha1=digest).first()
-    if existing:
-        return existing
-    filename = path.name
-    image = Image(owner=owner, original_filename=filename, name=label[:255] if label else filename)
-    image.file.save(filename, ContentFile(data), save=True)
-    return image
+    return _import_filer_image_bytes(
+        data, owner, filename=path.name, label=label, folder_path=folder_path
+    )
+
+
+def import_filer_image_from_url(
+    url: str,
+    owner,
+    *,
+    label: str,
+    session: requests.Session | None = None,
+    folder_path: Sequence[str] | None = None,
+) -> Image | None:
+    url = (url or '').strip()
+    if not url.startswith('http'):
+        return None
+    client = session or requests.Session()
+    response = client.get(url, timeout=120)
+    response.raise_for_status()
+    data = response.content
+    path = urlparse(url).path
+    filename = Path(path).name or 'image.jpg'
+    if '.' not in filename:
+        filename = f'{filename}.jpg'
+    return _import_filer_image_bytes(
+        data, owner, filename=filename, label=label, folder_path=folder_path
+    )
+
+
+def filer_picture_ids_in_placeholder(placeholder, language: str) -> set[int]:
+    from cms.models import CMSPlugin
+
+    ids: set[int] = set()
+    for cms_plugin in CMSPlugin.objects.filter(placeholder=placeholder, language=language):
+        if cms_plugin.plugin_type != 'Bootstrap4PicturePlugin':
+            continue
+        instance = cms_plugin.get_plugin_instance()[0]
+        if instance is None:
+            continue
+        picture_id = getattr(instance, 'picture_id', None)
+        if picture_id:
+            ids.add(picture_id)
+    return ids
+
+
+def is_filer_image_referenced(image_id: int) -> bool:
+    from djangocms_blog.models import Post
+    from djangocms_bootstrap4.contrib.bootstrap4_picture.models import Bootstrap4Picture
+
+    if Post.objects.filter(main_image_id=image_id).exists():
+        return True
+    return Bootstrap4Picture.objects.filter(picture_id=image_id).exists()
+
+
+def delete_filer_image_if_unreferenced(image_id: int | None) -> bool:
+    if not image_id:
+        return False
+    if is_filer_image_referenced(image_id):
+        return False
+    deleted, _ = Image.objects.filter(pk=image_id).delete()
+    return bool(deleted)

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+import re
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -25,24 +27,40 @@ from apps.cms_port.common.blog_app_config import (
     apply_port_blog_config,
     ensure_port_blog_thumbnail_options,
 )
-from apps.cms_port.common.filer_assets import import_filer_image
+from apps.cms_port.common.blog_body import populate_blog_post_body_from_html
+from apps.cms_port.common.filer_assets import delete_filer_image_if_unreferenced, import_filer_image
 from apps.cms_port.common.registry_pages import (
     BLOG_APPHOOK,
     blog_root_stub_reverse_id,
     is_under_generated,
 )
 from apps.cms_port.sites.nairr import blog_scrape
-from apps.cms_port.sites.nairr.blog_site_config import apply_nairr_blog_app_config
+from apps.cms_port.sites.nairr.blog_site_config import (
+    apply_nairr_blog_app_config,
+    ensure_nairr_no_drop_cap_tag,
+)
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
 from apps.cms_port.sites.nairr.page_registry import spec_by_slug
 from apps.cms_port.sites.nairr.support_links import rewrite_support_url
+
+# Joomla news id 2 — NAIRR Pilot Office Hours (SCIPE inline; Register here as body CTA).
+_PILOT_OFFICE_HOURS_NEWS_ID = 2
+_PILOT_OFFICE_HOURS_REGISTER_HREF = (
+    'https://access-ci.atlassian.net/servicedesk/customer/portal/5/group/7/create/44'
+)
+# Joomla news id 9 — Join the NAIRR Slack Workspace ("Sign up today!" as body CTA).
+_NAIRR_SLACK_WORKSPACE_NEWS_ID = 9
 
 LEGACY_BLOG_NAMESPACES = {
     'news': ('nairr-news', 'news'),
     'projects': ('nairr-project-highlights', 'project-highlights'),
 }
 EXTERNAL_TAG = blog_scrape.EXTERNAL_TAG_NAME
+
+
+def redirect_blog_tag_name() -> str:
+    return getattr(settings, 'PORTAL_BLOG_TAG_FOR_EXTERNAL_ARTICLES', EXTERNAL_TAG)
 
 
 @dataclass(frozen=True)
@@ -85,17 +103,58 @@ def _parse_date(value: str):
 # Spacing between same-day posts' synthetic publish times: 8 slots/day (0am, 3am, ...,
 # 9pm), comfortably more than the News feed ever has sharing one display date.
 SAME_DAY_ORDER_HOURS = 3
+PROJECTS_FEED_PUBLISH_BASE = datetime(2024, 6, 1, 12, 0, 0)
+
+
+def _blog_post_filer_folder_path(
+    target: BlogTarget,
+    *,
+    post_title: str,
+    row: dict,
+) -> list[str]:
+    """Filer path: CMS page ancestors → blog page → publish year → post title."""
+    segments: list[str] = []
+    slug = target.page_slug
+    while slug:
+        spec = spec_by_slug(slug)
+        if not spec:
+            break
+        segments.insert(0, spec.title)
+        slug = spec.parent_slug or ''
+    published = _resolve_post_datetime(row)
+    segments.append(str(published.year))
+    segments.append((post_title or row.get('slug') or 'Untitled').strip())
+    return segments
 
 
 def _resolve_post_datetime(row: dict):
-    """``date_published`` using the display date (``row['date']``) for the calendar day,
-    nudged by ``row['same_day_order']`` so same-day posts keep their original feed order.
-    """
-    base = _parse_date(str(row.get('date', '')))
-    same_day_order = row.get('same_day_order')
-    if not same_day_order:
+    """``date_published`` from display ``date`` (News) or highlights ``feed_rank`` (Projects)."""
+    date_value = str(row.get('date', '')).strip()
+    if date_value:
+        base = _parse_date(date_value)
+        same_day_order = row.get('same_day_order')
+        if same_day_order is not None:
+            return base + timedelta(hours=int(same_day_order) * SAME_DAY_ORDER_HOURS)
         return base
-    return base + timedelta(hours=same_day_order * SAME_DAY_ORDER_HOURS)
+    feed_rank = row.get('feed_rank')
+    if feed_rank is not None:
+        total = int(row.get('feed_total', 1))
+        base = timezone.make_aware(PROJECTS_FEED_PUBLISH_BASE)
+        offset = (total - 1 - int(feed_rank)) * SAME_DAY_ORDER_HOURS
+        return base + timedelta(hours=offset)
+    return timezone.now()
+
+
+def _with_projects_feed_ranks(rows: list[dict]) -> list[dict]:
+    """Backfill ``feed_rank`` for manifests scraped before rank metadata existed."""
+    total = len(rows)
+    out: list[dict] = []
+    for index, row in enumerate(rows):
+        updated = dict(row)
+        updated.setdefault('feed_rank', index)
+        updated.setdefault('feed_total', total)
+        out.append(updated)
+    return out
 
 
 def _rewrite_internal_hrefs(html: str, language: str, site_base: str) -> str:
@@ -276,15 +335,24 @@ def _attach_main_image(
     root: Path,
     publisher,
     thumbnail_options: PortBlogThumbnailOptions,
+    filer_folder_path: list[str] | None = None,
 ) -> None:
     rel = (row.get('image_file') or '').strip()
     if not rel:
         return
+    previous_main_image_id = post.main_image_id
     path = blog_scrape.blog_dir(root) / rel
-    image = import_filer_image(path, publisher, label=row.get('title') or row.get('slug', ''))
+    image = import_filer_image(
+        path,
+        publisher,
+        label=row.get('title') or row.get('slug', ''),
+        folder_path=filer_folder_path,
+    )
     if not image:
         return
     post.main_image = image
+    if previous_main_image_id and previous_main_image_id != image.pk:
+        delete_filer_image_if_unreferenced(previous_main_image_id)
     post.main_image_thumbnail = thumbnail_options.list_option
     post.main_image_full = thumbnail_options.detail_option
 
@@ -298,10 +366,12 @@ def _upsert_post(
     no_publish: bool,
     abstract_html: str,
     post_text: str,
-    external_tag: bool,
+    redirect_tag: bool,
+    redirect_tag_name: str | None = None,
     title: str | None = None,
     root: Path | None = None,
     thumbnail_options: PortBlogThumbnailOptions | None = None,
+    filer_folder_path: list[str] | None = None,
 ) -> Post:
     resolved_title = title or row.get('title') or row['slug']
     post = (
@@ -329,24 +399,137 @@ def _upsert_post(
             root=root,
             publisher=publisher,
             thumbnail_options=thumbnail_options,
+            filer_folder_path=filer_folder_path,
         )
     post.save()
-    ext_tag = Tag.objects.filter(name=EXTERNAL_TAG).first()
-    if external_tag:
-        tag, _ = Tag.objects.get_or_create(name=EXTERNAL_TAG)
+    tag_name = redirect_tag_name or redirect_blog_tag_name()
+    ext_tag = Tag.objects.filter(name=tag_name).first()
+    if redirect_tag:
+        tag, _ = Tag.objects.get_or_create(name=tag_name)
         post.tags.add(tag)
     elif ext_tag:
         post.tags.remove(ext_tag)
+    post.tags.add(ensure_nairr_no_drop_cap_tag())
     if not no_publish:
         post.publish = True
         post.save()
     return post
 
 
+def _nairr_slack_workspace_teaser_and_signup(
+    raw_description: str,
+) -> tuple[str, str, str] | None:
+    soup = BeautifulSoup(f'<div>{raw_description}</div>', 'lxml')
+    root = soup.select_one('div')
+    if not root:
+        return None
+    anchors = root.find_all('a', href=True)
+    if len(anchors) != 1:
+        return None
+    anchor = anchors[0]
+    href = (anchor.get('href') or '').strip()
+    if not href:
+        return None
+    for node in root.descendants:
+        if isinstance(node, NavigableString):
+            trimmed = re.sub(r'\s*Sign up today!?\s*$', '', str(node), flags=re.IGNORECASE)
+            if trimmed != str(node):
+                node.replace_with(trimmed)
+    teaser = root.decode_contents().strip()
+    if not teaser:
+        return None
+    return teaser, href, 'Sign up today!'
+
+
+def _pilot_office_hours_teaser_and_register(
+    raw_description: str,
+) -> tuple[str, str, str] | None:
+    soup = BeautifulSoup(f'<div>{raw_description}</div>', 'lxml')
+    root = soup.select_one('div')
+    if not root:
+        return None
+    register = root.find('a', href=_PILOT_OFFICE_HOURS_REGISTER_HREF)
+    if not register:
+        return None
+    href = (register.get('href') or '').strip()
+    label = register.get_text(strip=True) or 'Register here'
+    parent = register.parent
+    register.decompose()
+    if parent and parent.name == 'p':
+        for node in reversed(list(parent.children)):
+            if isinstance(node, NavigableString) and node.strip() == '.':
+                node.extract()
+                break
+            if isinstance(node, NavigableString) and node.strip():
+                break
+    teaser = root.decode_contents().strip()
+    if not teaser or not href:
+        return None
+    return teaser, href, label
+
+
+def _news_post_body_html(
+    body_html: str,
+    abstract_html: str,
+    *,
+    redirect_tag: bool,
+    body_from_html: str | None = None,
+) -> str:
+    """Detail body for non-redirect posts defaults to the list abstract.
+
+    ``body_from_html`` is pre-``_rewrite_internal_hrefs`` markup so placeholder import
+    sees Joomla paths (``/opportunities/...``) rather than ``get_absolute_url()`` paths
+    (``/generated/...``).
+    """
+    if redirect_tag:
+        return body_html or ''
+    if (body_html or '').strip():
+        return body_html
+    source = body_from_html if body_from_html is not None else abstract_html
+    return blog_scrape.build_news_detail_body_from_abstract(source or '')
+
+
+def _apply_imported_post_body(
+    post: Post,
+    body_html: str,
+    *,
+    language: str,
+    publisher,
+    site_base: str,
+    filer_folder_path: list[str] | None = None,
+) -> None:
+    """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
+    body_html = (body_html or '').strip()
+    if post.app_config.use_placeholder:
+        post.set_current_language(language)
+        if post.post_text:
+            post.post_text = ''
+            post.save()
+        if not body_html:
+            return
+        populate_blog_post_body_from_html(
+            post,
+            body_html,
+            language,
+            publisher,
+            internal_page_for_url=lambda path, create=False: internal_page_for_url(
+                path, language, create=create
+            ),
+            rewrite_url=rewrite_support_url,
+            site_base=site_base,
+            filer_folder_path=filer_folder_path,
+        )
+        return
+    post.set_current_language(language)
+    post.post_text = body_html
+    post.save()
+
+
 def import_news_row(
     config: BlogConfig,
     row: dict,
     *,
+    target: BlogTarget,
     root: Path,
     language: str,
     publisher,
@@ -354,24 +537,81 @@ def import_news_row(
     site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
-    kind = row.get('kind', 'external')
-    description = blog_scrape.prepare_news_abstract_html(row.get('abstract_html', ''))
+    kind = blog_scrape.normalize_news_kind(row.get('kind', 'external_sans_redirect'))
+    raw_description = row.get('abstract_html', '')
+    description = blog_scrape.prepare_news_abstract_html(raw_description)
     title = blog_scrape.plain_news_title(row.get('title') or '')
     site_host = urlparse(site_base).netloc
+    redirect_tag = kind in blog_scrape.REDIRECT_KINDS
+    body_html = ''
 
-    if kind == 'external_hidden':
+    if kind == 'external_with_redirect':
         redirect = blog_scrape.first_offsite_href(description, site_host)
         if not redirect:
             redirect = blog_scrape.first_offsite_href(description, '')
         abstract = (
-            blog_scrape.build_external_hidden_abstract(description, redirect)
+            blog_scrape.build_external_hidden_abstract(
+                raw_description,
+                redirect,
+                link_label=redirect_blog_tag_name(),
+            )
             if redirect
-            else description
+            else _rewrite_internal_hrefs(description, language, site_base)
         )
+    elif kind == 'internal_with_redirect':
+        abstract = _rewrite_internal_hrefs(description, language, site_base)
+        if not blog_scrape.first_internal_href(abstract, site_host):
+            internal = blog_scrape.first_internal_href(description, site_host)
+            if internal:
+                abstract = _rewrite_internal_hrefs(
+                    f'<p><a href="{internal}">{title or row.get("slug", "")}</a></p>',
+                    language,
+                    site_base,
+                )
+    elif kind == 'external_sans_redirect':
+        if row.get('id') == _PILOT_OFFICE_HOURS_NEWS_ID:
+            office_hours = _pilot_office_hours_teaser_and_register(raw_description)
+            if office_hours:
+                teaser, href, label = office_hours
+                abstract = _rewrite_internal_hrefs(
+                    blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+                )
+                body_html = blog_scrape.build_action_post_text(teaser, href, label)
+            else:
+                abstract = _rewrite_internal_hrefs(description, language, site_base)
+        elif row.get('id') == _NAIRR_SLACK_WORKSPACE_NEWS_ID:
+            slack_signup = _nairr_slack_workspace_teaser_and_signup(raw_description)
+            if slack_signup:
+                teaser, href, label = slack_signup
+                abstract = _rewrite_internal_hrefs(
+                    blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+                )
+                body_html = blog_scrape.build_action_post_text(teaser, href, label)
+            else:
+                abstract = _rewrite_internal_hrefs(description, language, site_base)
+        elif lone_action := blog_scrape.lone_top_level_action_link(raw_description):
+            teaser, href, label = lone_action
+            abstract = _rewrite_internal_hrefs(
+                blog_scrape.prepare_news_abstract_html(teaser), language, site_base
+            )
+            body_html = blog_scrape.build_action_post_text(teaser, href, label)
+        else:
+            abstract = _rewrite_internal_hrefs(description, language, site_base)
     else:
         abstract = _rewrite_internal_hrefs(description, language, site_base)
 
-    return _upsert_post(
+    body_html = _news_post_body_html(
+        body_html,
+        abstract,
+        redirect_tag=redirect_tag,
+        body_from_html=description,
+    )
+
+    resolved_title = title or row.get('title') or row['slug']
+    filer_folder_path = _blog_post_filer_folder_path(
+        target, post_title=resolved_title, row=row
+    )
+    post = _upsert_post(
         config,
         row,
         language=language,
@@ -379,39 +619,67 @@ def import_news_row(
         no_publish=no_publish,
         abstract_html=abstract,
         post_text='',
-        external_tag=True,
+        redirect_tag=redirect_tag,
         title=title or None,
         root=root,
         thumbnail_options=thumbnail_options,
+        filer_folder_path=filer_folder_path,
     )
+    _apply_imported_post_body(
+        post,
+        body_html,
+        language=language,
+        publisher=publisher,
+        site_base=site_base,
+        filer_folder_path=filer_folder_path,
+    )
+    return post
 
 
 def import_projects_row(
     config: BlogConfig,
     row: dict,
     *,
+    target: BlogTarget,
     root: Path,
     language: str,
     publisher,
     no_publish: bool,
+    site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
     html_path = blog_scrape.project_html_path(root, row['slug'])
     html = html_path.read_text(encoding='utf-8') if html_path.is_file() else ''
     title, body = _split_title_body(html) if html else ('', '')
-    return _upsert_post(
+    if body:
+        body = _rewrite_internal_hrefs(body, language, site_base)
+    resolved_title = title or row.get('title') or row['slug']
+    filer_folder_path = _blog_post_filer_folder_path(
+        target, post_title=resolved_title, row=row
+    )
+    post = _upsert_post(
         config,
         row,
         language=language,
         publisher=publisher,
         no_publish=no_publish,
         abstract_html='',
-        post_text=body,
-        external_tag=False,
+        post_text='',
+        redirect_tag=False,
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
+        filer_folder_path=filer_folder_path,
     )
+    _apply_imported_post_body(
+        post,
+        body,
+        language=language,
+        publisher=publisher,
+        site_base=site_base,
+        filer_folder_path=filer_folder_path,
+    )
+    return post
 
 
 def import_blog(
@@ -433,6 +701,7 @@ def import_blog(
         importer = lambda row: import_news_row(
             config,
             row,
+            target=target,
             root=root,
             language=language,
             publisher=publisher,
@@ -441,14 +710,16 @@ def import_blog(
             thumbnail_options=thumbnail_options,
         )
     else:
-        rows = load_manifest(blog_scrape.projects_manifest_path(root))
+        rows = _with_projects_feed_ranks(load_manifest(blog_scrape.projects_manifest_path(root)))
         importer = lambda row: import_projects_row(
             config,
             row,
+            target=target,
             root=root,
             language=language,
             publisher=publisher,
             no_publish=no_publish,
+            site_base=site_base,
             thumbnail_options=thumbnail_options,
         )
     if slug_filter is not None:

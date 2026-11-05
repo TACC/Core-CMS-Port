@@ -3,6 +3,7 @@ from datetime import timezone
 from django.test import SimpleTestCase
 from django.utils import timezone as django_timezone
 
+from apps.cms_port.sites.nairr import blog_import
 from apps.cms_port.sites.nairr.blog_import import _parse_date, _resolve_post_datetime
 
 
@@ -47,3 +48,18 @@ class BlogImportDateTests(SimpleTestCase):
         self.assertEqual(resolved.month, 9)
         self.assertEqual(resolved.day, 3)
         self.assertEqual(resolved.hour, 0)
+
+    def test_resolve_post_datetime_from_feed_rank_newest_first(self):
+        newer = {'feed_rank': 0, 'feed_total': 2}
+        older = {'feed_rank': 1, 'feed_total': 2}
+        self.assertGreater(
+            blog_import._resolve_post_datetime(newer),
+            blog_import._resolve_post_datetime(older),
+        )
+
+    def test_resolve_post_datetime_prefers_display_date_over_feed_rank(self):
+        row = {'date': 'Jan 20, 2026', 'feed_rank': 5}
+        resolved = blog_import._resolve_post_datetime(row)
+        self.assertEqual(resolved.year, 2026)
+        self.assertEqual(resolved.month, 1)
+        self.assertEqual(resolved.day, 20)

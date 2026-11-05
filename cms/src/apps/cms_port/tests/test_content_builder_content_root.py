@@ -151,3 +151,15 @@ class ContentBuilderContentRootGuardTests(TestCase):
         loose._content_root_container = self.content_root
         row = loose.add_row(self.content_root)
         self.assertIsNotNone(row.pk)
+
+    def test_link_target_kwargs_logs_when_placeholder_host_used(self):
+        builder = ContentBuilder(
+            self.placeholder,
+            TEST_LANGUAGE,
+            internal_page_for_url=lambda path, create=False: None,
+            enforce_placeholder_root_grid=False,
+        )
+        with self.assertLogs('apps.cms_port.common.content_builder', level='WARNING') as logs:
+            kwargs = builder._link_target_kwargs('/unregistered/path')
+        self.assertEqual(kwargs['external_link'], 'https://example.com/unregistered/path')
+        self.assertTrue(any('No CMS page' in message for message in logs.output))

@@ -24,6 +24,7 @@ PORT_BLOG_DETAIL_THUMBNAIL_NAME = 'News Article Page - Large (No Crop, No Scale)
 
 # Values that differ from djangocms_blog package defaults (per-field ``initial`` on the form).
 PORT_BLOG_APP_CONFIG_OVERRIDES: dict[str, object] = {
+    'use_placeholder': True,
     'use_related': False,
     'menu_structure': 'none',
     'menu_empty_categories': False,

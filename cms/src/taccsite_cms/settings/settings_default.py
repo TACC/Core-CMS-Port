@@ -29,6 +29,9 @@ PORTAL_SCRAPE = {
     },
 }
 
+# Host:port for ``django.contrib.sites`` (internal link URLs). Example: 127.0.0.1:8003
+PORTAL_CMS_SITE_DOMAIN = os.environ.get('PORTAL_CMS_SITE_DOMAIN', '').strip()
+
 # Set `PORTAL_STYLES` in `settings_custom.py`
 # PORTAL_STYLES = [{
 #     'is_remote': True,

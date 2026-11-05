@@ -65,8 +65,10 @@ def _add_html_with_article_embeds(
             continue
         if segment is ADDITIONAL_RESOURCES_SEGMENT:
             if additional_resources_snippet:
-                slug, name, body = additional_resources_snippet
-                builder.add_snippet_html(parent, slug=slug, name=name, html=body)
+                slug, name, template = additional_resources_snippet
+                builder.add_snippet_from_template(
+                    parent, slug=slug, name=name, template=template
+                )
             continue
         prepared = _prepare_html(segment)
         if prepared:
