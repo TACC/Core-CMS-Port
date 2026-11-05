@@ -64,7 +64,7 @@ Follow [Core-CMS "Git Worktrees and Docker"](https://github.com/TACC/Core-CMS/bl
 
 #### Agent Instances
 
-Follow [Core-CMS `core-cms-agent-instance-skill`](https://github.com/TACC/Core-CMS/blob/docs/core-cms-agent-instance-skill/.agents/skills/core-cms-agent-instance/SKILL.md).
+Follow [Core-CMS `core-cms-agent-instance`](https://github.com/TACC/Core-CMS/blob/main/.agents/skills/core-cms-agent-instance/SKILL.md).
 
 #### Section Labels
 
