@@ -16,6 +16,14 @@ class NairrBlogSiteConfigTests(SimpleTestCase):
                 12,
             )
 
+    def test_project_highlights_use_slug_permalink(self):
+        self.assertEqual(
+            blog_site_config.NAIRR_BLOG_NAMESPACE_APP_CONFIG_OVERRIDES[
+                'Project Highlights'
+            ]['url_patterns'],
+            'slug',
+        )
+
     def test_portal_blog_list_layout_matches_blog_targets(self):
         for target in blog_import.BLOG_TARGETS.values():
             self.assertIn(target.namespace, blog_site_config.NAIRR_PORTAL_BLOG_LIST_LAYOUT)
@@ -38,3 +46,8 @@ class NairrNoDropCapTagTests(TestCase):
         tag = blog_site_config.ensure_nairr_no_drop_cap_tag()
         self.assertEqual(tag.name, blog_site_config.NAIRR_BLOG_NO_DROP_CAP_TAG)
         self.assertEqual(tag.slug, blog_site_config.NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG)
+
+    def test_ensure_image_border_tag_slug(self):
+        tag = blog_site_config.ensure_nairr_image_border_tag()
+        self.assertEqual(tag.name, blog_site_config.NAIRR_BLOG_IMAGE_BORDER_TAG)
+        self.assertEqual(tag.slug, blog_site_config.NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG)

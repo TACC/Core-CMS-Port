@@ -14,7 +14,10 @@ NAIRR_BLOG_PAGINATE_BY = 12
 
 NAIRR_BLOG_NAMESPACE_APP_CONFIG_OVERRIDES: dict[str, dict[str, object]] = {
     'News': {'paginate_by': NAIRR_BLOG_PAGINATE_BY},
-    'Project Highlights': {'paginate_by': NAIRR_BLOG_PAGINATE_BY},
+    'Project Highlights': {
+        'paginate_by': NAIRR_BLOG_PAGINATE_BY,
+        'url_patterns': 'slug',
+    },
 }
 
 NAIRR_PORTAL_BLOG_LIST_LAYOUT: dict[str, str] = {
@@ -25,6 +28,8 @@ NAIRR_PORTAL_BLOG_LIST_LAYOUT: dict[str, str] = {
 # Core-CMS: ``has-blog-tag-no-drop-cap`` on ``.app-blog`` disables ``.s-drop-cap``.
 NAIRR_BLOG_NO_DROP_CAP_TAG = 'No Drop Cap'
 NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG = 'no-drop-cap'
+NAIRR_BLOG_IMAGE_BORDER_TAG = 'Image Border'
+NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG = 'image-border'
 
 
 def ensure_nairr_no_drop_cap_tag() -> Tag:
@@ -34,6 +39,17 @@ def ensure_nairr_no_drop_cap_tag() -> Tag:
     )
     if tag.slug != NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG:
         tag.slug = NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG
+        tag.save(update_fields=['slug'])
+    return tag
+
+
+def ensure_nairr_image_border_tag() -> Tag:
+    tag, _ = Tag.objects.get_or_create(
+        name=NAIRR_BLOG_IMAGE_BORDER_TAG,
+        defaults={'slug': NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG},
+    )
+    if tag.slug != NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG:
+        tag.slug = NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG
         tag.save(update_fields=['slug'])
     return tag
 

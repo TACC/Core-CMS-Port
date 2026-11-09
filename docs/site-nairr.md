@@ -38,6 +38,10 @@ PORTAL_STYLES = [
         'is_remote': False,
         'path': 'nairr/css/fix-blog-grid.css',
     },
+    {
+        'is_remote': True,
+        'path': 'https://cdn.jsdelivr.net/gh/TACC/Core-CMS-Custom@v1/nairr_assets/css/blog-project-highlights.css',
+    },
 ]
 ```
 

@@ -125,6 +125,15 @@ class BlogImportNewsBodyTests(SimpleTestCase):
 
 
 class BlogImportSplitTitleBodyTests(SimpleTestCase):
+    def test_first_sentence_lead_uses_scraped_body(self):
+        self.assertEqual(
+            blog_import._first_sentence_lead(
+                '<p>First sentence with <strong>emphasis</strong>.</p>'
+                '<p>Second sentence.</p>'
+            ),
+            '<p>First sentence with emphasis.</p>',
+        )
+
     def test_split_title_body_strips_h1_and_keeps_body(self):
         html = '<h1>Title</h1><p>Body paragraph.</p>'
         title, body = blog_import._split_title_body(html)
