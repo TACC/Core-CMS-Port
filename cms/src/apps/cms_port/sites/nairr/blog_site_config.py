@@ -31,6 +31,17 @@ NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG = 'no-drop-cap'
 NAIRR_BLOG_IMAGE_BORDER_TAG = 'Image Border'
 NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG = 'image-border'
 
+# Source slugs are stable scrape identifiers; unlike post titles, they do not change
+# when the CMS derives a human-readable post slug from an article title.
+NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUGS = frozenset(
+    {
+        'bridging-speed-and-precision',
+        'protein-function-prediction',
+        'defending-the-data',
+        'mapping-cosmos',
+    }
+)
+
 
 def ensure_nairr_no_drop_cap_tag() -> Tag:
     tag, _ = Tag.objects.get_or_create(
@@ -52,6 +63,10 @@ def ensure_nairr_image_border_tag() -> Tag:
         tag.slug = NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG
         tag.save(update_fields=['slug'])
     return tag
+
+
+def nairr_image_border_required(source_slug: str) -> bool:
+    return source_slug in NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUGS
 
 
 def apply_nairr_blog_app_config(config: BlogConfig) -> None:

@@ -51,3 +51,13 @@ class NairrNoDropCapTagTests(TestCase):
         tag = blog_site_config.ensure_nairr_image_border_tag()
         self.assertEqual(tag.name, blog_site_config.NAIRR_BLOG_IMAGE_BORDER_TAG)
         self.assertEqual(tag.slug, blog_site_config.NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG)
+
+    def test_image_border_is_limited_to_known_source_slugs(self):
+        for slug in (
+            'bridging-speed-and-precision',
+            'protein-function-prediction',
+            'defending-the-data',
+            'mapping-cosmos',
+        ):
+            self.assertTrue(blog_site_config.nairr_image_border_required(slug))
+        self.assertFalse(blog_site_config.nairr_image_border_required('saving-wildlife'))
