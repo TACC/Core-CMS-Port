@@ -65,7 +65,7 @@ def ensure_nairr_image_border_tag() -> Tag:
     return tag
 
 
-def nairr_image_border_required(source_slug: str) -> bool:
+def is_nairr_image_border_required(source_slug: str) -> bool:
     return source_slug in NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUGS
 
 

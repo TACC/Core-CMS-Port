@@ -40,7 +40,7 @@ from apps.cms_port.sites.nairr.blog_site_config import (
     apply_nairr_blog_app_config,
     ensure_nairr_image_border_tag,
     ensure_nairr_no_drop_cap_tag,
-    nairr_image_border_required,
+    is_nairr_image_border_required,
 )
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
@@ -688,7 +688,7 @@ def import_projects_row(
         abstract_html=_first_sentence_lead(body),
         post_text='',
         redirect_tag=False,
-        image_border_tag=nairr_image_border_required(row.get('slug', '')),
+        image_border_tag=is_nairr_image_border_required(row.get('slug', '')),
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,

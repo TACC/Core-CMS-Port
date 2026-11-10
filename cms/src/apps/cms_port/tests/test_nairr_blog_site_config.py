@@ -59,5 +59,5 @@ class NairrNoDropCapTagTests(TestCase):
             'defending-the-data',
             'mapping-cosmos',
         ):
-            self.assertTrue(blog_site_config.nairr_image_border_required(slug))
-        self.assertFalse(blog_site_config.nairr_image_border_required('saving-wildlife'))
+            self.assertTrue(blog_site_config.is_nairr_image_border_required(slug))
+        self.assertFalse(blog_site_config.is_nairr_image_border_required('saving-wildlife'))
