@@ -28,8 +28,8 @@ NAIRR_PORTAL_BLOG_LIST_LAYOUT: dict[str, str] = {
 # Core-CMS: ``has-blog-tag-no-drop-cap`` on ``.app-blog`` disables ``.s-drop-cap``.
 NAIRR_BLOG_NO_DROP_CAP_TAG = 'No Drop Cap'
 NAIRR_BLOG_NO_DROP_CAP_TAG_SLUG = 'no-drop-cap'
-NAIRR_BLOG_IMAGE_BORDER_TAG = 'Image Border'
-NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG = 'image-border'
+NAIRR_BLOG_IMAGE_BORDER_TAG = 'img-border'
+NAIRR_BLOG_IMAGE_BORDER_TAG_SLUG = 'img-border'
 
 # Source slugs are stable scrape identifiers; unlike post titles, they do not change
 # when the CMS derives a human-readable post slug from an article title.
