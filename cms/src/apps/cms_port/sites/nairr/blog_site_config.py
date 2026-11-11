@@ -39,6 +39,7 @@ NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUGS = frozenset(
         'protein-function-prediction',
         'defending-the-data',
         'mapping-cosmos',
+        'teaching-ai-skin-diseases',
     }
 )
 
