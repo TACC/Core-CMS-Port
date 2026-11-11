@@ -37,6 +37,7 @@ from apps.cms_port.common.registry_pages import (
 )
 from apps.cms_port.sites.nairr import blog_scrape
 from apps.cms_port.sites.nairr.blog_site_config import (
+    NAIRR_BLOG_IMAGE_BORDER_TAG,
     apply_nairr_blog_app_config,
     ensure_nairr_image_border_tag,
     ensure_nairr_no_drop_cap_tag,
@@ -519,6 +520,7 @@ def _apply_imported_post_body(
     publisher,
     site_base: str,
     filer_folder_path: list[str] | None = None,
+    first_image_class: str = '',
 ) -> None:
     """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
     body_html = (body_html or '').strip()
@@ -540,6 +542,7 @@ def _apply_imported_post_body(
             rewrite_url=rewrite_support_url,
             site_base=site_base,
             filer_folder_path=filer_folder_path,
+            first_image_class=first_image_class,
         )
         return
     post.set_current_language(language)
@@ -701,6 +704,11 @@ def import_projects_row(
         publisher=publisher,
         site_base=site_base,
         filer_folder_path=filer_folder_path,
+        first_image_class=(
+            'img-border'
+            if is_nairr_image_border_required(row.get('slug', ''))
+            else ''
+        ),
     )
     return post
 

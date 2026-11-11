@@ -245,6 +245,7 @@ def populate_blog_post_body_from_html(
     site_base: str = '',
     image_fetcher: Callable[[str, str], Image | None] | None = None,
     filer_folder_path: Sequence[str] | None = None,
+    first_image_class: str = '',
 ) -> None:
     """Replace ``post.content`` with one Text plugin (nested Picture / Image plugins in order)."""
     if not body_html or not str(body_html).strip():
@@ -285,6 +286,7 @@ def populate_blog_post_body_from_html(
     site_host = _site_host(site_base)
     text_plugin = builder.add_text(None, '')
     body_parts: list[str] = []
+    image_count = 0
 
     for node in _expand_body_nodes(root):
         if isinstance(node, Tag) and node.name == 'figure':
@@ -300,7 +302,9 @@ def populate_blog_post_body_from_html(
                 external_url=src if not image else '',
                 alt=alt,
                 caption=caption,
+                image_class=first_image_class if image_count == 0 else '',
             )
+            image_count += 1
             if picture_plugin:
                 body_parts.append(plugin_to_tag(picture_plugin))
             continue
