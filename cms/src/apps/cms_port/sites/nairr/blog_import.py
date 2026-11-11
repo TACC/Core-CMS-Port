@@ -427,11 +427,11 @@ def _upsert_post(
     elif ext_tag:
         post.tags.remove(ext_tag)
     post.tags.add(ensure_nairr_no_drop_cap_tag())
-    legacy_image_border = Tag.objects.filter(name='Image Border').first()
+    image_border = Tag.objects.filter(name=NAIRR_BLOG_IMAGE_BORDER_TAG).first()
     if image_border_tag:
         post.tags.add(ensure_nairr_image_border_tag())
-    if legacy_image_border:
-        post.tags.remove(legacy_image_border)
+    elif image_border:
+        post.tags.remove(image_border)
     if not no_publish:
         post.publish = True
         post.save()
