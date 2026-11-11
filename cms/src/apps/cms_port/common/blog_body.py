@@ -246,6 +246,7 @@ def populate_blog_post_body_from_html(
     image_fetcher: Callable[[str, str], Image | None] | None = None,
     filer_folder_path: Sequence[str] | None = None,
     first_image_class: str = '',
+    image_class_index: int = 0,
 ) -> None:
     """Replace ``post.content`` with one Text plugin (nested Picture / Image plugins in order)."""
     if not body_html or not str(body_html).strip():
@@ -302,7 +303,9 @@ def populate_blog_post_body_from_html(
                 external_url=src if not image else '',
                 alt=alt,
                 caption=caption,
-                image_class=first_image_class if image_count == 0 else '',
+                image_class=(
+                    first_image_class if image_count == image_class_index else ''
+                ),
             )
             image_count += 1
             if picture_plugin:

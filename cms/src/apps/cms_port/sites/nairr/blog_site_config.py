@@ -42,6 +42,9 @@ NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUGS = frozenset(
         'teaching-ai-skin-diseases',
     }
 )
+NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUG_TO_IMAGE_INDEX = {
+    'defending-the-data': 1,
+}
 
 
 def ensure_nairr_no_drop_cap_tag() -> Tag:
@@ -68,6 +71,10 @@ def ensure_nairr_image_border_tag() -> Tag:
 
 def is_nairr_image_border_required(source_slug: str) -> bool:
     return source_slug in NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUGS
+
+
+def nairr_image_border_image_index(source_slug: str) -> int:
+    return NAIRR_BLOG_IMAGE_BORDER_SOURCE_SLUG_TO_IMAGE_INDEX.get(source_slug, 0)
 
 
 def apply_nairr_blog_app_config(config: BlogConfig) -> None:

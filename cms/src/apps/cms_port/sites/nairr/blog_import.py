@@ -41,6 +41,7 @@ from apps.cms_port.sites.nairr.blog_site_config import (
     apply_nairr_blog_app_config,
     ensure_nairr_image_border_tag,
     ensure_nairr_no_drop_cap_tag,
+    nairr_image_border_image_index,
     is_nairr_image_border_required,
 )
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
@@ -521,6 +522,7 @@ def _apply_imported_post_body(
     site_base: str,
     filer_folder_path: list[str] | None = None,
     first_image_class: str = '',
+    image_class_index: int = 0,
 ) -> None:
     """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
     body_html = (body_html or '').strip()
@@ -543,6 +545,7 @@ def _apply_imported_post_body(
             site_base=site_base,
             filer_folder_path=filer_folder_path,
             first_image_class=first_image_class,
+            image_class_index=image_class_index,
         )
         return
     post.set_current_language(language)
@@ -709,6 +712,7 @@ def import_projects_row(
             if is_nairr_image_border_required(row.get('slug', ''))
             else ''
         ),
+        image_class_index=nairr_image_border_image_index(row.get('slug', '')),
     )
     return post
 
