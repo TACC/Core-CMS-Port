@@ -17,6 +17,7 @@ from apps.cms_port.sites.nairr import scrape_lib
 
 NEWS_JSON_PATH = '/pilotnews/news.json'
 HIGHLIGHTS_JSON_PATH = '/pilotprojecthighlights/highlights.json'
+SCRAPED_IMAGE_PREFIX = 'cms-port-scrape://'
 
 HIDDEN_CTA_MARKERS = (
     'Learn more at',
@@ -139,6 +140,41 @@ def image_extension_from_url(url: str) -> str:
     if suffix in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
         return suffix
     return '.jpg'
+
+
+def inline_image_path(root: Path, blog_key: str, slug: str, index: int, url: str) -> Path:
+    """Return a stable local path for an image embedded in scraped HTML."""
+    filename = Path(urlparse(url).path).name or 'image.jpg'
+    filename = re.sub(r'[^A-Za-z0-9._-]+', '-', filename).strip('.-') or 'image'
+    suffix = Path(filename).suffix.lower()
+    if suffix not in ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'):
+        filename = f'{filename}{image_extension_from_url(url)}'
+    return blog_dir(root) / blog_key / 'images' / slug / f'{index:03d}-{filename}'
+
+
+def scrape_inline_images(
+    html: str,
+    *,
+    root: Path,
+    blog_key: str,
+    slug: str,
+    base: str,
+    session: requests.Session,
+    force: bool,
+) -> str:
+    """Download embedded images and replace their URLs with local scrape markers."""
+    soup = BeautifulSoup(html or '', 'lxml')
+    image_index = 0
+    for image in soup.select('img[src]'):
+        src = (image.get('src') or '').strip()
+        absolute_url = urljoin(base + '/', src) if src.startswith(('/', '//')) else src
+        if not absolute_url.startswith(('http://', 'https://')):
+            continue
+        image_index += 1
+        destination = inline_image_path(root, blog_key, slug, image_index, absolute_url)
+        download_image(session, absolute_url, destination, force=force)
+        image['src'] = SCRAPED_IMAGE_PREFIX + str(destination.relative_to(root))
+    return soup.decode_contents().strip() if soup.body else html
 
 
 def download_image(
@@ -344,6 +380,16 @@ def scrape_news(
     rows = build_news_manifest_rows(items, site_host=urlparse(base).netloc)
     if slug_filter is not None:
         rows = [row for row in rows if row['slug'] == slug_filter]
+    for row in rows:
+        row['abstract_html'] = scrape_inline_images(
+            row.get('abstract_html', ''),
+            root=root,
+            blog_key='news',
+            slug=row['slug'],
+            base=base,
+            session=session,
+            force=force,
+        )
     write_manifest(news_manifest_path(root), rows)
     return 1
 
@@ -388,6 +434,15 @@ def scrape_projects(
         )
         extracted = scrape_lib.read_scrape_file(root, scrape_path)
         if extracted and not scrape_lib.is_placeholder(extracted):
+            extracted = scrape_inline_images(
+                extracted,
+                root=root,
+                blog_key='projects',
+                slug=slug,
+                base=base,
+                session=session,
+                force=force,
+            )
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(extracted, encoding='utf-8')
         written += 1

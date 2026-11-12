@@ -15,7 +15,6 @@ from collections.abc import Sequence
 from typing import Callable
 from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
 from djangocms_text_ckeditor.html import clean_html
 from djangocms_text_ckeditor.utils import plugin_to_tag
@@ -25,7 +24,6 @@ from apps.cms_port.common.content_builder import ContentBuilder
 from apps.cms_port.common.filer_assets import (
     delete_filer_image_if_unreferenced,
     filer_picture_ids_in_placeholder,
-    import_filer_image_from_url,
 )
 from apps.cms_port.common.html_text import collapse_whitespace
 
@@ -263,19 +261,9 @@ def populate_blog_post_body_from_html(
         rewrite_url=rewrite_url,
     )
 
-    session = requests.Session()
-    session.headers.update({'User-Agent': 'TACC-CMS-Port-Blog-Import/1.0'})
-
-    def default_image_fetcher(url: str, label: str) -> Image | None:
-        return import_filer_image_from_url(
-            url,
-            publisher,
-            label=label,
-            session=session,
-            folder_path=filer_folder_path,
-        )
-
-    fetch_image = image_fetcher or default_image_fetcher
+    # Importers must consume the scrape artifacts only.  The scraper is responsible
+    # for replacing remote image URLs with local-image markers before this runs.
+    fetch_image = image_fetcher or (lambda _url, _label: None)
 
     soup = BeautifulSoup(f'<div data-port-blog-body>{body_html}</div>', 'lxml')
     root = soup.select_one('div[data-port-blog-body]')

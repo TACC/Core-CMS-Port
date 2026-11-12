@@ -23,7 +23,11 @@ class Command(BaseCommand):
         )
         parser.add_argument('--dry-run', action='store_true', help='Print actions without writing')
         parser.add_argument('--no-publish', action='store_true', help='Leave posts as drafts')
-        parser.add_argument('--replace', action='store_true', help='Re-import posts in scope (upsert)')
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Re-import posts in scope (upsert)',
+        )
         parser.add_argument('--slug', help='Only this manifest row slug')
 
     def handle(self, *args, **options):
@@ -49,8 +53,8 @@ class Command(BaseCommand):
         if ensure_portal_cms_site_domain():
             self.stdout.write('Updated django.contrib.sites domain from PORTAL_CMS_SITE_DOMAIN.')
 
-        if not options['replace'] and options['slug'] is None:
-            self.stdout.write('Upserting posts (pass --replace to emphasize overwrite).')
+        if not options['force'] and options['slug'] is None:
+            self.stdout.write('Upserting posts (pass --force to emphasize overwrite).')
 
         blogs = ['news', 'projects'] if options['blog'] == 'all' else [options['blog']]
         for key in blogs:
