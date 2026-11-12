@@ -525,11 +525,14 @@ class ContentBuilder:
         link_url: str = '',
         link_target: str = '',
         alignment: str = 'center',
+        image_class: str = '',
     ):
         """Picture / Image (Responsive) plugin — ``Bootstrap4PicturePlugin``, not generic ``Image``."""
         if not filer_image and not external_url:
             return None
         attributes = {'alt': alt} if alt else {}
+        if image_class:
+            attributes['class'] = image_class
         template = 'default' if link_url else 'no_link_to_ext_image'
         kwargs = {
             'template': template,

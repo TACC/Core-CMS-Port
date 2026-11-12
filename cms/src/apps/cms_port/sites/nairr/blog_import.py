@@ -7,6 +7,7 @@ import re
 import warnings
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from html import escape
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -36,8 +37,12 @@ from apps.cms_port.common.registry_pages import (
 )
 from apps.cms_port.sites.nairr import blog_scrape
 from apps.cms_port.sites.nairr.blog_site_config import (
+    NAIRR_BLOG_IMAGE_BORDER_TAG,
     apply_nairr_blog_app_config,
+    ensure_nairr_image_border_tag,
     ensure_nairr_no_drop_cap_tag,
+    nairr_image_border_image_index,
+    is_nairr_image_border_required,
 )
 from apps.cms_port.sites.nairr.internal_pages import internal_page_for_url
 from apps.cms_port.sites.nairr import page_registry
@@ -191,6 +196,19 @@ def _split_title_body(html: str) -> tuple[str, str]:
     if h1:
         h1.decompose()
     return title, root.decode_contents().strip()
+
+
+def _first_sentence_lead(body_html: str) -> str:
+    """Return the first sentence of scraped project-highlight content as a lead."""
+    soup = BeautifulSoup(body_html or '', 'lxml')
+    for paragraph in soup.find_all(('p', 'li')):
+        text = re.sub(r'\s+', ' ', paragraph.get_text(' ', strip=True)).strip()
+        text = re.sub(r'\s+([.!?,;:])', r'\1', text)
+        if not text:
+            continue
+        sentence = re.split(r'(?<=[.!?])(?:\s+|$)', text, maxsplit=1)[0].strip()
+        return f'<p>{escape(sentence or text)}</p>'
+    return ''
 
 
 def _merge_blog_config(
@@ -367,6 +385,8 @@ def _upsert_post(
     abstract_html: str,
     post_text: str,
     redirect_tag: bool,
+    image_border_tag: bool = False,
+    source_slug: str | None = None,
     redirect_tag_name: str | None = None,
     title: str | None = None,
     root: Path | None = None,
@@ -385,9 +405,9 @@ def _upsert_post(
     apply_import_post_author(post, publisher)
     post.set_current_language(language)
     post.title = resolved_title
-    # Leave slug blank: Post.save_translation() auto-derives it from the title
-    # (djangocms_blog.models.Post), matching how an editor creates a post by hand.
-    post.slug = ''
+    # Project Highlights use the source site's URL slug; other blogs retain the
+    # editor-style title-derived slug behavior.
+    post.slug = source_slug if source_slug is not None else ''
     post.abstract = abstract_html
     post.post_text = post_text
     post.publish = not no_publish
@@ -410,6 +430,11 @@ def _upsert_post(
     elif ext_tag:
         post.tags.remove(ext_tag)
     post.tags.add(ensure_nairr_no_drop_cap_tag())
+    image_border = Tag.objects.filter(name=NAIRR_BLOG_IMAGE_BORDER_TAG).first()
+    if image_border_tag:
+        post.tags.add(ensure_nairr_image_border_tag())
+    elif image_border:
+        post.tags.remove(image_border)
     if not no_publish:
         post.publish = True
         post.save()
@@ -497,6 +522,8 @@ def _apply_imported_post_body(
     publisher,
     site_base: str,
     filer_folder_path: list[str] | None = None,
+    first_image_class: str = '',
+    image_class_index: int = 0,
 ) -> None:
     """Write article body per apphook ``use_placeholder`` (plugins vs ``post_text``)."""
     body_html = (body_html or '').strip()
@@ -518,6 +545,8 @@ def _apply_imported_post_body(
             rewrite_url=rewrite_support_url,
             site_base=site_base,
             filer_folder_path=filer_folder_path,
+            first_image_class=first_image_class,
+            image_class_index=image_class_index,
         )
         return
     post.set_current_language(language)
@@ -663,9 +692,11 @@ def import_projects_row(
         language=language,
         publisher=publisher,
         no_publish=no_publish,
-        abstract_html='',
+        abstract_html=_first_sentence_lead(body),
         post_text='',
         redirect_tag=False,
+        image_border_tag=is_nairr_image_border_required(row.get('slug', '')),
+        source_slug=row['slug'],
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
@@ -678,6 +709,12 @@ def import_projects_row(
         publisher=publisher,
         site_base=site_base,
         filer_folder_path=filer_folder_path,
+        first_image_class=(
+            'img-border'
+            if is_nairr_image_border_required(row.get('slug', ''))
+            else ''
+        ),
+        image_class_index=nairr_image_border_image_index(row.get('slug', '')),
     )
     return post
 
