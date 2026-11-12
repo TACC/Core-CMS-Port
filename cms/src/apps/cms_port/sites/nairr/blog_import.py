@@ -386,6 +386,7 @@ def _upsert_post(
     post_text: str,
     redirect_tag: bool,
     image_border_tag: bool = False,
+    source_slug: str | None = None,
     redirect_tag_name: str | None = None,
     title: str | None = None,
     root: Path | None = None,
@@ -404,9 +405,9 @@ def _upsert_post(
     apply_import_post_author(post, publisher)
     post.set_current_language(language)
     post.title = resolved_title
-    # Leave slug blank: Post.save_translation() auto-derives it from the title
-    # (djangocms_blog.models.Post), matching how an editor creates a post by hand.
-    post.slug = ''
+    # Project Highlights use the source site's URL slug; other blogs retain the
+    # editor-style title-derived slug behavior.
+    post.slug = source_slug if source_slug is not None else ''
     post.abstract = abstract_html
     post.post_text = post_text
     post.publish = not no_publish
@@ -695,6 +696,7 @@ def import_projects_row(
         post_text='',
         redirect_tag=False,
         image_border_tag=is_nairr_image_border_required(row.get('slug', '')),
+        source_slug=row['slug'],
         title=title or row.get('title'),
         root=root,
         thumbnail_options=thumbnail_options,
