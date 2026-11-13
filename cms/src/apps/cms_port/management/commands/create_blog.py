@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.cms_port.common.django_site import ensure_portal_cms_site_domain
 from apps.cms_port.site_loader import default_site_id, load_site
-from apps.cms_port.sites.nairr import blog_import
+from apps.cms_port.sites.nairr import blog_import, blog_scrape
 
 
 class Command(BaseCommand):
@@ -58,6 +58,29 @@ class Command(BaseCommand):
 
         blogs = ['news', 'projects'] if options['blog'] == 'all' else [options['blog']]
         for key in blogs:
+            manifest = (
+                blog_scrape.news_manifest_path(root)
+                if key == 'news'
+                else blog_scrape.projects_manifest_path(root)
+            )
+            rows = blog_import.load_manifest(manifest)
+            if not rows:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'No scraped data found for {key}: {manifest}. '
+                        'Run scrape_blog first.'
+                    )
+                )
+                continue
+            if options.get('slug') and not any(
+                row.get('slug') == options['slug'] for row in rows
+            ):
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'No scraped {key} row found for slug {options["slug"]!r}: {manifest}.'
+                    )
+                )
+                continue
             count = blog_import.import_blog(
                 key,
                 root=root,
