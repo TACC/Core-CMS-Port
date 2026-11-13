@@ -1,4 +1,6 @@
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import Mock
 
 from django.test import SimpleTestCase
 
@@ -8,6 +10,31 @@ NAIRR_HOST = 'nairrpilot.org'
 
 
 class BlogScrapeKindTests(SimpleTestCase):
+    def test_scrape_inline_images_downloads_and_rewrites_urls(self):
+        session = Mock()
+        response = Mock(content=b'image-bytes')
+        response.raise_for_status.return_value = None
+        session.get.return_value = response
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            html = '<figure><img src="/media/story.png" alt="Story"></figure>'
+            out = blog_scrape.scrape_inline_images(
+                html,
+                root=root,
+                blog_key='projects',
+                slug='story',
+                base='https://nairrpilot.org',
+                session=session,
+                force=False,
+            )
+            expected = root / 'blog/projects/images/story/001-story.png'
+            self.assertIn(
+                f'{blog_scrape.SCRAPED_IMAGE_PREFIX}blog/projects/images/story/001-story.png',
+                out,
+            )
+            self.assertEqual(expected.read_bytes(), b'image-bytes')
+            session.get.assert_called_once_with('https://nairrpilot.org/media/story.png', timeout=120)
+
     def test_classify_external_sans_redirect_for_zenodo_links(self):
         item = {
             'id': 13,

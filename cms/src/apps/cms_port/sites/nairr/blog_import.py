@@ -521,6 +521,7 @@ def _apply_imported_post_body(
     language: str,
     publisher,
     site_base: str,
+    scrape_root: Path,
     filer_folder_path: list[str] | None = None,
     first_image_class: str = '',
     image_class_index: int = 0,
@@ -544,6 +545,9 @@ def _apply_imported_post_body(
             ),
             rewrite_url=rewrite_support_url,
             site_base=site_base,
+            image_fetcher=lambda src, label: _import_scraped_body_image(
+                src, label, root=scrape_root, publisher=publisher, folder_path=filer_folder_path
+            ),
             filer_folder_path=filer_folder_path,
             first_image_class=first_image_class,
             image_class_index=image_class_index,
@@ -552,6 +556,27 @@ def _apply_imported_post_body(
     post.set_current_language(language)
     post.post_text = body_html
     post.save()
+
+
+def _import_scraped_body_image(
+    src: str,
+    label: str,
+    *,
+    root: Path,
+    publisher,
+    folder_path: list[str] | None,
+):
+    prefix = blog_scrape.SCRAPED_IMAGE_PREFIX
+    if not src.startswith(prefix):
+        return None
+    relative = Path(src[len(prefix):])
+    if relative.is_absolute():
+        return None
+    root = root.resolve()
+    path = (root / relative).resolve()
+    if root not in path.parents or not path.is_file():
+        return None
+    return import_filer_image(path, publisher, label=label, folder_path=folder_path)
 
 
 def import_news_row(
@@ -660,6 +685,7 @@ def import_news_row(
         language=language,
         publisher=publisher,
         site_base=site_base,
+        scrape_root=root,
         filer_folder_path=filer_folder_path,
     )
     return post
@@ -708,6 +734,7 @@ def import_projects_row(
         language=language,
         publisher=publisher,
         site_base=site_base,
+        scrape_root=root,
         filer_folder_path=filer_folder_path,
         first_image_class=(
             'img-border'

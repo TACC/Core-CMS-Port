@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.cms_port.common.django_site import ensure_portal_cms_site_domain
 from apps.cms_port.site_loader import default_site_id, load_site
-from apps.cms_port.sites.nairr import blog_import
+from apps.cms_port.sites.nairr import blog_import, blog_scrape
 
 
 class Command(BaseCommand):
@@ -23,7 +23,11 @@ class Command(BaseCommand):
         )
         parser.add_argument('--dry-run', action='store_true', help='Print actions without writing')
         parser.add_argument('--no-publish', action='store_true', help='Leave posts as drafts')
-        parser.add_argument('--replace', action='store_true', help='Re-import posts in scope (upsert)')
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Re-import posts in scope (upsert)',
+        )
         parser.add_argument('--slug', help='Only this manifest row slug')
 
     def handle(self, *args, **options):
@@ -49,11 +53,34 @@ class Command(BaseCommand):
         if ensure_portal_cms_site_domain():
             self.stdout.write('Updated django.contrib.sites domain from PORTAL_CMS_SITE_DOMAIN.')
 
-        if not options['replace'] and options['slug'] is None:
-            self.stdout.write('Upserting posts (pass --replace to emphasize overwrite).')
+        if not options['force'] and options['slug'] is None:
+            self.stdout.write('Upserting posts (pass --force to emphasize overwrite).')
 
         blogs = ['news', 'projects'] if options['blog'] == 'all' else [options['blog']]
         for key in blogs:
+            manifest = (
+                blog_scrape.news_manifest_path(root)
+                if key == 'news'
+                else blog_scrape.projects_manifest_path(root)
+            )
+            rows = blog_import.load_manifest(manifest)
+            if not rows:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'No scraped data found for {key}: {manifest}. '
+                        'Run scrape_blog first.'
+                    )
+                )
+                continue
+            if options.get('slug') and not any(
+                row.get('slug') == options['slug'] for row in rows
+            ):
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'No scraped {key} row found for slug {options["slug"]!r}: {manifest}.'
+                    )
+                )
+                continue
             count = blog_import.import_blog(
                 key,
                 root=root,
