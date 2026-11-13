@@ -34,7 +34,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         site_id = (options['site'] or default_site_id()).strip().lower()
         if site_id != 'nairr':
-            raise CommandError('Only site nairr is supported for delete_blog.')
+            raise CommandError('Only site nairr is supported for delete_blog_scrape.')
         if options['slug'] and options['blog'] == 'news':
             raise CommandError('--slug is only supported with --blog projects.')
 
