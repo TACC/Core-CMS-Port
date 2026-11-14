@@ -16,6 +16,7 @@ from apps.cms_port.common.html_text import collapse_whitespace
 from apps.cms_port.sites.nairr import scrape_lib
 
 NEWS_JSON_PATH = '/pilotnews/news.json'
+NEWSLETTERS_PAGE_PATH = '/news/newsletters'
 HIGHLIGHTS_JSON_PATH = '/pilotprojecthighlights/highlights.json'
 SCRAPED_IMAGE_PREFIX = 'cms-port-scrape://'
 
@@ -109,6 +110,7 @@ def classify_news_item(item: dict, *, site_host: str) -> str:
 @dataclass(frozen=True)
 class BlogScrapeTargets:
     news_json_url: str
+    newsletters_page_url: str
     highlights_json_url: str
     site_base: str
 
@@ -119,6 +121,10 @@ def blog_dir(root: Path) -> Path:
 
 def news_manifest_path(root: Path) -> Path:
     return blog_dir(root) / 'news' / 'manifest.json'
+
+
+def newsletters_manifest_path(root: Path) -> Path:
+    return blog_dir(root) / 'newsletters' / 'manifest.json'
 
 
 def projects_manifest_path(root: Path) -> Path:
@@ -174,7 +180,7 @@ def scrape_inline_images(
         destination = inline_image_path(root, blog_key, slug, image_index, absolute_url)
         download_image(session, absolute_url, destination, force=force)
         image['src'] = SCRAPED_IMAGE_PREFIX + str(destination.relative_to(root))
-    return soup.decode_contents().strip() if soup.body else html
+    return soup.body.decode_contents().strip() if soup.body else html
 
 
 def download_image(
@@ -199,6 +205,7 @@ def scrape_targets(base: str) -> BlogScrapeTargets:
     base = base.rstrip('/')
     return BlogScrapeTargets(
         news_json_url=urljoin(base + '/', NEWS_JSON_PATH.lstrip('/')),
+        newsletters_page_url=urljoin(base + '/', NEWSLETTERS_PAGE_PATH.lstrip('/')),
         highlights_json_url=urljoin(base + '/', HIGHLIGHTS_JSON_PATH.lstrip('/')),
         site_base=base,
     )
@@ -309,6 +316,56 @@ def build_news_manifest_rows(items: list, *, site_host: str) -> list[dict]:
     return rows
 
 
+def _newsletter_slug(title: str, href: str) -> str:
+    path_slug = urlparse(href).path.rstrip('/').rsplit('/', 1)[-1]
+    if path_slug and path_slug != 'newsletters':
+        return path_slug
+    slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    return slug or 'newsletter'
+
+
+def build_newsletter_manifest_rows(html: str, *, base: str) -> list[dict]:
+    """Build News-shaped rows from the newsletter listing page."""
+    soup = BeautifulSoup(html or '', 'lxml')
+    rows = []
+    for item in soup.select('div.news-item'):
+        title_node = item.select_one('h2, h3, h4')
+        link = item.select_one('a[href]')
+        if not title_node or not link:
+            continue
+        title = collapse_whitespace(title_node.get_text(' '))
+        href = urljoin(base + '/', link.get('href', '').strip())
+        if not href:
+            continue
+        summary_nodes = [
+            node
+            for node in item.select(':scope > p')
+            if 'timedate' not in (node.get('class') or []) and not node.find('a')
+        ]
+        summary = ''.join(str(node) for node in summary_nodes).strip()
+        abstract = summary
+        fragment = BeautifulSoup(abstract, 'lxml')
+        abstract = fragment.body.decode_contents().strip() if fragment.body else abstract
+        rows.append(
+            {
+                'slug': _newsletter_slug(title, href),
+                'title': title,
+                'date': collapse_whitespace(
+                    item.select_one('.timedate').get_text(' ')
+                    if item.select_one('.timedate')
+                    else ''
+                ),
+                'abstract_html': abstract,
+                # Newsletter cards are always redirect posts, including legacy cards whose
+                # destination happens to be on nairrpilot.org.
+                'kind': 'external_with_redirect',
+                'source_url': href,
+            }
+        )
+    _assign_same_day_order(rows)
+    return rows
+
+
 def _assign_same_day_order(rows: list[dict]) -> None:
     """Rank rows sharing the same display ``date`` by their feed order (``items`` is
     newest-first), so same-day posts keep their original relative order on import.
@@ -391,6 +448,35 @@ def scrape_news(
             force=force,
         )
     write_manifest(news_manifest_path(root), rows)
+    return 1
+
+
+def scrape_newsletters(
+    *,
+    root: Path,
+    base: str,
+    session: requests.Session,
+    force: bool,
+    slug_filter: str | None,
+    crawl_delay: float,
+) -> int:
+    targets = scrape_targets(base)
+    response = session.get(targets.newsletters_page_url, timeout=120)
+    response.raise_for_status()
+    rows = build_newsletter_manifest_rows(response.text, base=base)
+    if slug_filter is not None:
+        rows = [row for row in rows if row['slug'] == slug_filter]
+    for row in rows:
+        row['abstract_html'] = scrape_inline_images(
+            row.get('abstract_html', ''),
+            root=root,
+            blog_key='newsletters',
+            slug=row['slug'],
+            base=base,
+            session=session,
+            force=force,
+        )
+    write_manifest(newsletters_manifest_path(root), rows)
     return 1
 
 

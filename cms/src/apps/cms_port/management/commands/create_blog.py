@@ -11,13 +11,13 @@ from apps.cms_port.sites.nairr import blog_import, blog_scrape
 
 
 class Command(BaseCommand):
-    help = 'Import scraped blog manifests into CMS (News and Project Highlights).'
+    help = 'Import scraped blog manifests into CMS (News, Newsletters, and Project Highlights).'
 
     def add_arguments(self, parser):
         parser.add_argument('--site', default=None, help='Port site package (default: PORTAL_SCRAPE_SITE)')
         parser.add_argument(
             '--blog',
-            choices=('news', 'projects', 'all'),
+            choices=('news', 'newsletters', 'projects', 'all'),
             default='all',
             help='Which blog to import',
         )
@@ -56,12 +56,20 @@ class Command(BaseCommand):
         if not options['force'] and options['slug'] is None:
             self.stdout.write('Upserting posts (pass --force to emphasize overwrite).')
 
-        blogs = ['news', 'projects'] if options['blog'] == 'all' else [options['blog']]
+        blogs = (
+            ['news', 'newsletters', 'projects']
+            if options['blog'] == 'all'
+            else [options['blog']]
+        )
         for key in blogs:
             manifest = (
                 blog_scrape.news_manifest_path(root)
                 if key == 'news'
-                else blog_scrape.projects_manifest_path(root)
+                else (
+                    blog_scrape.newsletters_manifest_path(root)
+                    if key == 'newsletters'
+                    else blog_scrape.projects_manifest_path(root)
+                )
             )
             rows = blog_import.load_manifest(manifest)
             if not rows:

@@ -20,7 +20,7 @@ class Command(BaseCommand):
         parser.add_argument('--site', default=None, help='Port site package (default: PORTAL_SCRAPE_SITE)')
         parser.add_argument(
             '--blog',
-            choices=('news', 'projects', 'all'),
+            choices=('news', 'newsletters', 'projects', 'all'),
             default='all',
             help='Which blog cache to delete',
         )
@@ -35,7 +35,7 @@ class Command(BaseCommand):
         site_id = (options['site'] or default_site_id()).strip().lower()
         if site_id != 'nairr':
             raise CommandError('Only site nairr is supported for delete_blog_scrape.')
-        if options['slug'] and options['blog'] == 'news':
+        if options['slug'] and options['blog'] in ('news', 'newsletters'):
             raise CommandError('--slug is only supported with --blog projects.')
 
         site = load_site(site_id)
