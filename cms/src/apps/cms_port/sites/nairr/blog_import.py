@@ -59,6 +59,7 @@ _NAIRR_SLACK_WORKSPACE_NEWS_ID = 9
 
 LEGACY_BLOG_NAMESPACES = {
     'news': ('nairr-news', 'news'),
+    'newsletters': ('nairr-newsletters', 'newsletters'),
     'projects': ('nairr-project-highlights', 'project-highlights'),
 }
 EXTERNAL_TAG = blog_scrape.EXTERNAL_TAG_NAME
@@ -78,6 +79,9 @@ class BlogTarget:
 
 BLOG_TARGETS = {
     'news': BlogTarget('news', 'news/news', 'News', 'News'),
+    'newsletters': BlogTarget(
+        'newsletters', 'news/newsletters', 'Newsletters', 'Newsletters'
+    ),
     'projects': BlogTarget(
         'projects', 'projects/highlights', 'Project Highlights', 'Project Highlights'
     ),
@@ -591,7 +595,12 @@ def import_news_row(
     site_base: str,
     thumbnail_options: PortBlogThumbnailOptions,
 ) -> Post:
-    kind = blog_scrape.normalize_news_kind(row.get('kind', 'external_sans_redirect'))
+    newsletter_redirect = target.key == 'newsletters'
+    kind = (
+        'external_with_redirect'
+        if newsletter_redirect
+        else blog_scrape.normalize_news_kind(row.get('kind', 'external_sans_redirect'))
+    )
     raw_description = row.get('abstract_html', '')
     description = blog_scrape.prepare_news_abstract_html(raw_description)
     title = blog_scrape.plain_news_title(row.get('title') or '')
@@ -600,7 +609,9 @@ def import_news_row(
     body_html = ''
 
     if kind == 'external_with_redirect':
-        redirect = blog_scrape.first_offsite_href(description, site_host)
+        redirect = row.get('source_url') if newsletter_redirect else None
+        if not redirect:
+            redirect = blog_scrape.first_offsite_href(description, site_host)
         if not redirect:
             redirect = blog_scrape.first_offsite_href(description, '')
         abstract = (
@@ -760,8 +771,13 @@ def import_blog(
     ensure_blog_page(target, language, publisher, no_publish)
     config = ensure_blog_config(target, language)
     thumbnail_options = ensure_port_blog_thumbnail_options()
-    if blog_key == 'news':
-        rows = load_manifest(blog_scrape.news_manifest_path(root))
+    if blog_key in ('news', 'newsletters'):
+        manifest_path = (
+            blog_scrape.news_manifest_path(root)
+            if blog_key == 'news'
+            else blog_scrape.newsletters_manifest_path(root)
+        )
+        rows = load_manifest(manifest_path)
         importer = lambda row: import_news_row(
             config,
             row,

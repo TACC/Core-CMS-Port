@@ -19,7 +19,7 @@ class Command(BaseCommand):
         parser.add_argument('--site', default=None, help='Port site package (default: PORTAL_SCRAPE_SITE)')
         parser.add_argument(
             '--blog',
-            choices=('news', 'projects', 'all'),
+            choices=('news', 'newsletters', 'projects', 'all'),
             default='all',
             help='Which blog feed to scrape',
         )
@@ -54,6 +54,18 @@ class Command(BaseCommand):
                 crawl_delay=crawl_delay,
             )
             self.stdout.write(self.style.SUCCESS(f'News manifest updated ({count} artifact(s))'))
+        if blog in ('newsletters', 'all'):
+            count = blog_scrape.scrape_newsletters(
+                root=root,
+                base=base,
+                session=session,
+                force=options['force'],
+                slug_filter=slug_filter,
+                crawl_delay=crawl_delay,
+            )
+            self.stdout.write(
+                self.style.SUCCESS(f'Newsletters manifest updated ({count} artifact(s))')
+            )
         if blog in ('projects', 'all'):
             count = blog_scrape.scrape_projects(
                 root=root,
