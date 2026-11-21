@@ -16,7 +16,7 @@ Build, push, and deploy the shared `taccwma/core-cms-port` image. To add a site 
 
 ### GitHub Actions
 
-Push to `main` or run **Build** (`workflow_dispatch`). (Tags: `<short-sha>`, `<branch>`, `latest`.)
+Push to `main` or run **Build** (`workflow_dispatch`). (Tags: `<short-sha>`, `<branch>`, `<version>`, `latest`.)
 
 _Repo needs `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets, like [other Core-CMS-Template projects](https://github.com/topics/tacc-core-cms-template)._
 
