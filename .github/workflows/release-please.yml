@@ -24,9 +24,7 @@ jobs:
 
   build-release:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
     uses: ./.github/workflows/build.yml
     with:
-      checkout_ref: ${{ needs.release-please.outputs.tag_name }}
-      image_tag: ${{ needs.release-please.outputs.tag_name }}
+      release_tag: ${{ needs.release-please.outputs.tag_name }}
     secrets: inherit
