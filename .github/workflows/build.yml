@@ -20,6 +20,9 @@ jobs:
           echo "BRANCH_NAME=$(echo ${GITHUB_REF_NAME} | sed 's/[^[:alnum:]\.\_\-]/-/g')" >> "$GITHUB_OUTPUT";
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT";
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -34,4 +37,5 @@ jobs:
         with:
           context: cms
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: taccwma/core-cms-port:${{ steps.vars.outputs.SHORT_SHA }},taccwma/core-cms-port:${{ steps.vars.outputs.BRANCH_NAME }},taccwma/core-cms-port:latest
