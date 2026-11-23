@@ -134,7 +134,7 @@ PAGE_SPECS = [
         'Resource Allocations',
         'standard.html',
         'projects/awarded',
-        'empty',
+        'article',
         parent_slug='projects',
     ),
     PageSpec(
