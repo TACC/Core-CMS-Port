@@ -2,6 +2,11 @@ FROM taccwma/core-cms:release-v4.42.X
 
 WORKDIR /code
 
+# Install curl and Node.js 20.x.
+RUN apt-get update && apt-get install -y curl
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+RUN apt-get install -y nodejs
+
 RUN pip install --no-cache-dir beautifulsoup4 requests
 
 COPY /src/apps /code/apps

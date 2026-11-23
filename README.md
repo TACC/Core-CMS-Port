@@ -13,7 +13,7 @@ Ports third-party websites onto [Core CMS].
 Follow [Core CMS Template's "Start Project"][core-cms-template-start].
 
 Projects:
-- [**NAIRR**](docs/site-nairr.md)
+- [**NAIRR**](https://github.com/TACC/NAIRR-OC-Portal/)
 - [NHERI](https://www.designsafe-ci.org/)
 - …
 
