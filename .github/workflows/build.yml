@@ -1,8 +1,14 @@
 name: Build
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: 'Release/version tag to publish'
+        required: false
+        type: string
   push:
-    branches: [main, feat/core-cms-port-image]
+    tags: ['v*']
 
 jobs:
   build_commit:
@@ -13,12 +19,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
 
-      - name: Set shortsha and branch environment variables
+      - name: Set image tag variables
         id: vars
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          echo "BRANCH_NAME=$(echo ${GITHUB_REF_NAME} | sed 's/[^[:alnum:]\.\_\-]/-/g')" >> "$GITHUB_OUTPUT";
-          echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT";
+          BRANCH_TAG=$(echo "$GITHUB_REF_NAME" | sed 's/[^[:alnum:]\.\_\-]/-/g')
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          {
+            echo 'TAGS<<EOF'
+            echo "taccwma/core-cms-port:$SHORT_SHA"
+            echo "taccwma/core-cms-port:$BRANCH_TAG"
+            if [ -n "$RELEASE_TAG" ]; then
+              echo "taccwma/core-cms-port:$RELEASE_TAG"
+            fi
+            echo 'taccwma/core-cms-port:latest'
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,10 +49,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push commit tagged Docker image
+      - name: Build & push Docker image
         uses: docker/build-push-action@v5
         with:
           context: cms
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: taccwma/core-cms-port:${{ steps.vars.outputs.SHORT_SHA }},taccwma/core-cms-port:${{ steps.vars.outputs.BRANCH_NAME }},taccwma/core-cms-port:latest
+          tags: ${{ steps.vars.outputs.TAGS }}
