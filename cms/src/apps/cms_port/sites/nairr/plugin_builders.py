@@ -32,6 +32,10 @@ from apps.cms_port.sites.nairr.resource_catalog_snippets import (
     RESOURCE_CATALOG_README_URL,
     resource_catalog_snippet_for_page,
 )
+from apps.cms_port.sites.nairr.projects_browser_html import PROJECTS_BROWSER_SEGMENT
+from apps.cms_port.sites.nairr.projects_browser_snippets import (
+    projects_browser_snippet_for_page,
+)
 from apps.cms_port.sites.nairr.scrape_lib import rewrite_lead_to_annotation
 from apps.cms_port.sites.nairr.section_label_shortcuts import (
     nairr_section_label_from_chunk,
@@ -56,11 +60,17 @@ def _add_html_with_article_embeds(
     XRAS ``renderCatalog`` options: {readme}
     """.format(readme=RESOURCE_CATALOG_README_URL)
     catalog_snippet = resource_catalog_snippet_for_page(page_slug)
+    projects_browser_snippet = projects_browser_snippet_for_page(page_slug)
     additional_resources_snippet = additional_resources_snippet_for_page(page_slug)
     for segment in split_html_at_article_embeds(html):
         if segment is RESOURCE_CATALOG_SEGMENT:
             if catalog_snippet:
                 slug, name, body = catalog_snippet
+                builder.add_snippet_html(parent, slug=slug, name=name, html=body)
+            continue
+        if segment is PROJECTS_BROWSER_SEGMENT:
+            if projects_browser_snippet:
+                slug, name, body = projects_browser_snippet
                 builder.add_snippet_html(parent, slug=slug, name=name, html=body)
             continue
         if segment is ADDITIONAL_RESOURCES_SEGMENT:

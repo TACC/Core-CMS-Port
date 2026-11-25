@@ -23,7 +23,7 @@ Tracks page-by-page import progress and cross-cutting follow-ups for the
 - [ ] `pilotresources`
 - [ ] `opportunities/how-review-matching-works`
 - [ ] `opportunities/speaker-request`
-- [ ] `projects/awarded` (pattern: empty — stub only, no content import)
+- [x] `projects/awarded` (XRAS projects-browser embed)
 - [ ] `projects/demo`
 - [ ] `projects/expansion`
 - [ ] `map` (pattern: empty — stub only, no content import)
