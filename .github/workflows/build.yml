@@ -54,4 +54,5 @@ jobs:
         with:
           context: cms
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.vars.outputs.TAGS }}
